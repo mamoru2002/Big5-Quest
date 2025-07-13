@@ -6,21 +6,20 @@
 
 ---
 
-## 画面遷移図/ワイヤーフレーム
+## 2. 画面遷移図 / ワイヤーフレーム
 
-Figmaで作成した画面遷移図はこちらから確認できます。
+Figma で作成した画面遷移図はこちらから確認できます。
 
 [Figmaリンク：画面遷移図（Big5-Quest）](https://www.figma.com/design/SdftQGSIMeKiny1Fq5vUKa/LIFEIPPO?node-id=0-1&p=f&t=01rXtAGIhl09OoWN-0)
 
 ---
 
-## ER 図 / テーブル定義
+## 3. ER 図 / テーブル定義
 
-![ER 図](attachment:f4f731c1-70d5-48a7-8e48-05d6c38ecfe9:image.png)
+![ER 図](img/er_diagram.png)
 
 ---
 
-## 5. システム構成図
+## 4. システム構成図
 
-![System Architecture](attachment:259691f0-b419-43d3-bd7d-4e3fcd4cbdf1:image.png)
-
+![システム構成図](img/system_architecture.png)
