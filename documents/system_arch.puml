@@ -1,0 +1,27 @@
+@startuml
+'----------------------------------------------------------
+'  Big5-Quest  Application-Layer Only
+'----------------------------------------------------------
+hide circle
+skinparam rectangle {
+  BackgroundColor #F1F5F9
+  BorderColor     #64748B
+  FontColor       #334155
+  RoundCorner     10
+}
+skinparam cloud {
+  BackgroundColor #E2E8F0
+  BorderColor     #64748B
+  FontColor       #334155
+}
+
+actor "ブラウザ" as Browser
+
+cloud "CloudFront + S3\n(React SPA)" as CDN
+rectangle "Rails API\nREST + Action Cable" as API
+rectangle "Sidekiq\nJob Worker" as Worker
+
+Browser --> CDN : HTTPS\n静的アセット
+Browser --> API : HTTPS /api
+API     --> Worker : Redis Queue\n(非同期タスク)
+@enduml
