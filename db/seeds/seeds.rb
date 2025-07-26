@@ -92,3 +92,16 @@ forms_map.each do |form_name, question_ids|
     end
   end
 end
+
+challenges_path = Rails.root.join('db/seeds/challenges_C.json')
+challenge_items = JSON.parse(File.read(challenges_path), symbolize_names: true)
+
+conscientious = Trait.find_by!(code: 'C')  # 誠実性を取得
+
+challenge_items.each do |item|
+  Challenge.find_or_create_by!(
+    trait:      conscientious,
+    title:      item[:title],
+    difficulty: item[:difficulty]
+  )
+end
