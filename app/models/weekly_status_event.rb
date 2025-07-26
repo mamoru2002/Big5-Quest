@@ -1,0 +1,2 @@
+class WeeklyStatusEvent < ApplicationRecord
+end

@@ -1,0 +1,2 @@
+class WeeklyProgress < ApplicationRecord
+end

@@ -1,0 +1,2 @@
+class DiagnosisForm < ApplicationRecord
+end
