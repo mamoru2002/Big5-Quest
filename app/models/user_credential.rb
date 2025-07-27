@@ -1,0 +1,2 @@
+class UserCredential < ApplicationRecord
+end

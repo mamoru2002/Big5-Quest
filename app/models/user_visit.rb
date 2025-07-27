@@ -1,0 +1,2 @@
+class UserVisit < ApplicationRecord
+end

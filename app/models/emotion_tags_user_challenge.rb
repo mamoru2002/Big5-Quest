@@ -1,0 +1,2 @@
+class EmotionTagsUserChallenge < ApplicationRecord
+end

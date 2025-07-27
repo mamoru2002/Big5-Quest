@@ -1,0 +1,2 @@
+class DiagnosisCompletion < ApplicationRecord
+end

@@ -1,0 +1,2 @@
+class UserChallengeComment < ApplicationRecord
+end
