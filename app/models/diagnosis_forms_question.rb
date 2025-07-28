@@ -1,4 +1,4 @@
 class DiagnosisFormsQuestion < ApplicationRecord
-  beliongs_to :diagnosis_form_id
-  beliongs_to :question_id
+  belongs_to :diagnosis_form
+  belongs_to :question
 end
