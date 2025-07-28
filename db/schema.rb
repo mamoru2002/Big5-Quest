@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_07_26_113208) do
+ActiveRecord::Schema[7.2].define(version: 2025_07_28_061924) do
   create_table "challenges", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.bigint "trait_id", null: false
     t.integer "difficulty", limit: 1, null: false
@@ -179,6 +179,20 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_26_113208) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "weekly_misses", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+    t.bigint "weekly_progress_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["weekly_progress_id"], name: "index_weekly_misses_on_weekly_progress_id"
+  end
+
+  create_table "weekly_pauses", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+    t.bigint "weekly_progress_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["weekly_progress_id"], name: "index_weekly_pauses_on_weekly_progress_id"
+  end
+
   create_table "weekly_progresses", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.integer "week_no", null: false
@@ -187,14 +201,6 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_26_113208) do
     t.datetime "updated_at", null: false
     t.index ["user_id", "week_no"], name: "index_weekly_progresses_on_user_id_and_week_no", unique: true
     t.index ["user_id"], name: "index_weekly_progresses_on_user_id"
-  end
-
-  create_table "weekly_status_events", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
-    t.bigint "weekly_progress_id", null: false
-    t.integer "event_type", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["weekly_progress_id"], name: "index_weekly_status_events_on_weekly_progress_id"
   end
 
   add_foreign_key "challenges", "traits"
@@ -219,6 +225,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_26_113208) do
   add_foreign_key "user_credentials", "users", on_delete: :cascade
   add_foreign_key "user_profiles", "users", on_delete: :cascade
   add_foreign_key "user_visits", "users", on_delete: :cascade
+  add_foreign_key "weekly_misses", "weekly_progresses", on_delete: :cascade
+  add_foreign_key "weekly_pauses", "weekly_progresses", on_delete: :cascade
   add_foreign_key "weekly_progresses", "users"
-  add_foreign_key "weekly_status_events", "weekly_progresses"
 end
