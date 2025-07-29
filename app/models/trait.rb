@@ -1,4 +1,7 @@
 class Trait < ApplicationRecord
-  has_many :questions
-  has_many :challenges
+  include AutoPresenceValidations
+  has_many :questions, dependent: :restrict_with_error
+  has_many :challenges, dependent: :restrict_with_error
+
+  validates :code, uniqueness: true
 end
