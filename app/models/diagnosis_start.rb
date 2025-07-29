@@ -1,3 +1,4 @@
 class DiagnosisStart < ApplicationRecord
-  belongs_to :diagnosis_form
+  include AutoPresenceValidations
+  belongs_to :diagnosis_result
 end

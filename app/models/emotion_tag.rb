@@ -1,3 +1,5 @@
 class EmotionTag < ApplicationRecord
-  has_many :emotion_tag_user_challenge
+  include AutoPresenceValidations
+
+  has_many :emotion_tags_user_challenges
 end

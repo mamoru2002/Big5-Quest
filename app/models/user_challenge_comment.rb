@@ -1,3 +1,4 @@
 class UserChallengeComment < ApplicationRecord
-    belongs_to :user_challenge
+  include AutoPresenceValidations
+  belongs_to :user_challenge
 end

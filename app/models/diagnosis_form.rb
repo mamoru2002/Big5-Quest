@@ -1,4 +1,5 @@
 class DiagnosisForm < ApplicationRecord
-  has_many :diagnosis_question
-  has_many :diagnosis_result
+  include AutoPresenceValidations
+  has_many :diagnosis_forms_questions, dependent: :restrict_with_error
+  has_many :diagnosis_results, dependent: :restrict_with_error
 end
