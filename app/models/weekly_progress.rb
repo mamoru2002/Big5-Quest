@@ -1,10 +1,16 @@
-class User < ApplicationRecord
-  has_one  :user_profile,    dependent: :destroy
-  has_one  :user_visit,      dependent: :destroy
-  has_one  :user_credential, dependent: :destroy
+class WeeklyProgress < ApplicationRecord
+  belongs_to :user
 
-  has_many :weekly_progresses,  dependent: :destroy
-  has_many :diagnosis_results,  dependent: :destroy
-  has_many :user_challenges,    dependent: :destroy
-  has_many :likes,              dependent: :destroy
+  has_many :user_challenges,   dependent: :destroy
+  has_many :diagnosis_results, dependent: :destroy
+  has_many :weekly_misses,     dependent: :destroy
+  has_many :weekly_pauses,     dependent: :destroy
+
+  validates :user_id,  presence: true
+
+  validates :week_no,
+            presence:     true,
+            numericality: { only_integer: true, greater_than: 0 },
+            uniqueness:   { scope: :user_id }
+  validates :start_at, presence: true
 end
