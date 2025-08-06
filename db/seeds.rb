@@ -7,7 +7,6 @@
 #   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
 #     MovieGenre.find_or_create_by!(name: genre_name)
 #   end
-
 require 'json'
 
 puts 'Seeding traits ...'
@@ -61,35 +60,35 @@ end
 # フォームと質問の対応づけを登録
 
 forms_file = Rails.root.join('db/seeds/forms_map.json')
-forms_map  = JSON.parse(File.read(forms_file))  # 今回は key が文字列のまま
+unless File.exist?(forms_file)
+  puts "⚠️ forms_map.json が見つかりません: #{forms_file}"
+  exit(1)
+end
 
-# 各フォームについて繰り返す
+raw = File.read(forms_file)
+begin
+  forms_map = JSON.parse(raw)
+rescue JSON::ParserError => e
+  puts "⚠️ forms_map.json のパースに失敗しました: #{e.message}"
+  exit(1)
+end
+
+puts "🔍 フォーム登録用 JSON キー一覧: #{forms_map.keys.inspect}"
+
 forms_map.each do |form_name, question_ids|
-  # すでにフォームが存在していれば取得、なければ新規作成
-  form = DiagnosisForm.find_by(name: form_name)
-  unless form
-    form = DiagnosisForm.create!(name: form_name)
-  end
+  form = DiagnosisForm.find_or_create_by!(name: form_name)
+  puts "  ✔️ フォーム登録: #{form.name} (id=#{form.id})"
 
-  # このフォームに紐づく質問IDのリストを順番に処理
   question_ids.each_with_index do |uuid, index|
-    # 質問をUUIDから探す（なければエラー）
+    # 質問がないときはエラー
     question = Question.find_by!(uuid: uuid)
-
-    # フォームと質問の紐付け
-    link = DiagnosisFormsQuestion.find_by(
+    link = DiagnosisFormsQuestion.find_or_create_by!(
       diagnosis_form: form,
       question:       question
-    )
-
-    # なければ作成する（question_order は順番を示す数値）
-    unless link
-      DiagnosisFormsQuestion.create!(
-        diagnosis_form: form,
-        question:       question,
-        question_order: index + 1  # 1から始まる連番にする
-      )
+    ) do |dfq|
+      dfq.question_order = index + 1
     end
+    puts "    ‣ link #{question.uuid} を order=#{link.question_order} で登録"
   end
 end
 
