@@ -1,6 +1,5 @@
 class UserVisit < ApplicationRecord
-  include AutoPresenceValidations
   belongs_to :user
 
-  validates :token, uniqueness: true
+  validates :token, presence: true, uniqueness: true, length: { is: 64 }
 end
