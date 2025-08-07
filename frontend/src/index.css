@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 html, body {
   font-family: 'M PLUS Rounded 1c', system-ui, Avenir, Helvetica, Arial, sans-serif;
