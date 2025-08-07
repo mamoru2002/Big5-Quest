@@ -68,6 +68,19 @@ module Api
       render json: { error: e.message }, status: :unprocessable_entity
     end
 
+    def challenges
+      _result = current_user.diagnosis_results.find(params[:id])
+
+      trait_code = params[:trait_code]
+      trait = Trait.find_by!(code: trait_code)
+
+      list = trait.challenges
+                  .order(:difficulty)
+                  .select(:id, :title, :difficulty)
+
+      render json: list
+    end
+
     private
 
     # 今週の WeeklyProgress をユーザーごとに見つける/作る
