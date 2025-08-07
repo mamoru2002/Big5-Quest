@@ -1,6 +1,13 @@
 import React from 'react'
-import DiagnosePage from './components/DiagnosisForm'
+import { Routes, Route } from 'react-router-dom'
+import DiagnosisForm from './components/DiagnosisForm'
+import ResultPage     from './components/ResultPage'
 
 export default function App() {
-  return <DiagnosePage />
+  return (
+    <Routes>
+      <Route path="/" element={<DiagnosisForm />} />
+      <Route path="/result/:id" element={<ResultPage />} />
+    </Routes>
+  )
 }

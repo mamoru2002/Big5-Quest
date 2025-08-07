@@ -2,20 +2,23 @@
 module Api
   class DiagnosisResultsController < ApplicationController
     # POST /api/diagnosis_results
-    # パラメータ例:
     def create
-      pms  = params.require(:diagnosis_result).permit(:form_name)
-      form = DiagnosisForm.find_by!(name: pms[:form_name])
-
+      pms   = params.require(:diagnosis_result).permit(:form_name)
+      form  = DiagnosisForm.find_by!(name: pms[:form_name])
       weekly = resolve_current_week_for(current_user)
 
-      result = DiagnosisResult.create!(
+      result = DiagnosisResult.find_or_initialize_by(
         user:            current_user,
-        diagnosis_form:  form,
-        weekly_progress: weekly,
-        status:          :incomplete
-      )
-      DiagnosisStart.create!(diagnosis_result: result)
+        weekly_progress: weekly
+      ) do |r|
+        r.diagnosis_form = form
+        r.status         = :incomplete
+      end
+
+      if result.new_record?
+        result.save!                             # バリデーション通して INSERT
+        DiagnosisStart.create!(diagnosis_result: result)
+      end
 
       render json: { id: result.id }, status: :created
 
