@@ -1,6 +1,10 @@
-# app/controllers/api/diagnosis_results_controller.rb
 module Api
   class DiagnosisResultsController < ApplicationController
+    def show
+      result = current_user.diagnosis_results.find(params[:id])
+      render json: { id: result.id, scores: compute_scores(result) }
+    end
+
     # POST /api/diagnosis_results
     def create
       pms   = params.require(:diagnosis_result).permit(:form_name)
@@ -16,7 +20,7 @@ module Api
       end
 
       if result.new_record?
-        result.save!                             # バリデーション通して INSERT
+        result.save!
         DiagnosisStart.create!(diagnosis_result: result)
       end
 
@@ -58,7 +62,7 @@ module Api
     def complete
       result = current_user.diagnosis_results.find(params[:id])
 
-      scores = compute_scores(result)   # 必要ならスコア算出
+      scores = compute_scores(result)
       DiagnosisCompletion.create!(diagnosis_result: result)
       result.update!(status: :complete)
 
