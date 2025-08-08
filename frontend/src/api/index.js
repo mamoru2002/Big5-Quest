@@ -35,3 +35,17 @@ export async function fetchResultScores(id) {
   const res = await client.get(`/diagnosis_results/${id}`);
   return res.data.scores;
 }
+
+// 特性ごとのチャレンジ一覧
+export async function fetchChallengesByTrait(code) {
+  const res = await client.get(`/traits/${code}/challenges`);
+  return res.data; // [{id, title, difficulty}, ...]
+}
+
+// チャレンジ登録（1〜4件）
+export async function createUserChallenges(diagnosisResultId, challengeIds) {
+  await client.post('/user_challenges', {
+    diagnosis_result_id: diagnosisResultId,
+    challenge_ids: challengeIds,
+  });
+}
