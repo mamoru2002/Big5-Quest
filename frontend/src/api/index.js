@@ -19,7 +19,7 @@ export async function startDiagnosis(formName) {
   return res.data.id;
 }
 
-/** 回答一括送信 */
+/** 回答送信 */
 export async function submitAnswers(resultId, answers) {
   await client.post(`/diagnosis_results/${resultId}/answers`, { answers });
 }
@@ -27,5 +27,11 @@ export async function submitAnswers(resultId, answers) {
 /** 診断完了 */
 export async function completeDiagnosis(resultId) {
   const res = await client.post(`/diagnosis_results/${resultId}/complete`);
+  return res.data.scores;
+}
+
+/** 診断結果のスコア取得 */
+export async function fetchResultScores(id) {
+  const res = await client.get(`/diagnosis_results/${id}`);
   return res.data.scores;
 }
