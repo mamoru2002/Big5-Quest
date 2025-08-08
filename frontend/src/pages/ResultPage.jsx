@@ -27,7 +27,7 @@ export default function ResultPage() {
   const { state } = useLocation()
   const nav = useNavigate()
 
-  const scores = state?.scores || {}
+  const scores = useMemo(() => state?.scores || {}, [state?.scores])
 
   const recommended = useMemo(() => {
     const targetCodes = ['N', 'E', 'C']
