@@ -7,8 +7,8 @@ import {
   submitAnswers,
   completeDiagnosis
 } from '../api'
-import Progress from './Progress'
-import Button from './ui/Button'
+import Progress from '../components/Progress'
+import Button from '../components/ui/Button'
 
 const PAGE_SIZE = 5
 
