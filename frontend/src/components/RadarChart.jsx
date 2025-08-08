@@ -9,7 +9,7 @@ export default function RadarChart({ scores }) {
 
     const ctx = chartRef.current.getContext('2d');
 
-    const labels = ['精神安定性', '外向性', '開放性', '協調性', '誠実性'];
+    const labels = ['情緒安定性', '外向性', '開放性', '協調性', '誠実性'];
     const traitOrder = ['N', 'E', 'O', 'A', 'C'];
     const dataValues = traitOrder.map(code => scores[code] ?? 0);
 
@@ -33,9 +33,9 @@ export default function RadarChart({ scores }) {
         scales: {
           r: {
             suggestedMin: 0,
-            suggestedMax: 100,
+            suggestedMax: 5,
             ticks: {
-              stepSize: 20,
+              stepSize: 1,
               color: '#2B3541',
             },
             grid: {
