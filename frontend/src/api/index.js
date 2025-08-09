@@ -49,3 +49,9 @@ export async function createUserChallenges(diagnosisResultId, challengeIds) {
     challenge_ids: challengeIds,
   });
 }
+
+export async function fetchChallenges(code) {
+  // Rails ルート: GET /api/traits/:code/challenges
+  const res = await client.get(`/traits/${code}/challenges`);
+  return res.data; // [{id, title, difficulty}, ...]
+}
