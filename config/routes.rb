@@ -1,6 +1,6 @@
 Rails.application.routes.draw do
   namespace :api do
-    resources :diagnosis_results, only: [ :create, :show ] do
+    resources :diagnosis_results, only: [ :create, :show, :update ] do
       member do
         post :answers
         post :complete
@@ -9,7 +9,7 @@ Rails.application.routes.draw do
     resources :diagnosis_forms, only: [], param: :name do
       member { get :questions }
     end
-    resources :user_challenges, only: [ :create ]
+    resources :user_challenges, only: [ :index, :create, :update ]
 
     resources :traits, only: [], param: :code do
       resources :challenges, only: [ :index ], module: :traits
