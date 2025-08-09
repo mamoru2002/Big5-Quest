@@ -1,6 +1,6 @@
 Rails.application.routes.draw do
   namespace :api do
-    resources :diagnosis_results, only: [ :create, :show ] do
+    resources :diagnosis_results, only: [ :create, :show, :update ] do
       member do
         post :answers
         post :complete
