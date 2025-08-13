@@ -55,3 +55,21 @@ export async function fetchChallenges(code) {
   const res = await client.get(`/traits/${code}/challenges`);
   return res.data; // [{id, title, difficulty}, ...]
 }
+
+export async function fetchCurrentWeek() {
+  const res = await client.get('/weeks/current');
+  return res.data;
+}
+
+export async function fetchWeek(offset) {
+  const res = await client.get('/weeks/show', { params: { offset } });
+  return res.data;
+}
+
+/** ユーザーチャレンジの更新（status / exec_count） */
+export async function updateUserChallenge(id, attrs) {
+  // Rails側のstrong parametersが user_challenge[:status, :exec_count] を期待しているのでこの形に包む
+  const payload = { user_challenge: attrs } // 例: { status: 'done', exec_count: 1 }
+  const res = await client.put(`/user_challenges/${id}`, payload)
+  return res.data
+}
