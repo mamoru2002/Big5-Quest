@@ -27,9 +27,9 @@ def update
       body = update_params[:comment].to_s.strip
       if body.present?
         if uc.user_challenge_comment
-          uc.user_challenge_comment.update!(body: body)
+          uc.user_challenge_comment.update!(comment: body)
         else
-          uc.create_user_challenge_comment!(body: body, user: current_user)
+          uc.create_user_challenge_comment!(comment: body)
         end
       end
     end
@@ -47,11 +47,11 @@ def update
 
   render json: uc.as_json(
     only: [ :id, :status, :exec_count ],
-    include: {
-      challenge: { only: [ :id, :title, :difficulty ] },
-      user_challenge_comment: { only: [ :id, :body ] },
-      emotion_tags_user_challenges: { only: [ :emotion_tag_id ] }
-    }
+      include: {
+        challenge: { only: [ :id, :title, :difficulty ] },
+        user_challenge_comment: { only: [ :id, :comment, :is_public ] },
+        emotion_tags_user_challenges: { only: [ :emotion_tag_id ] }
+      }
   )
 rescue ActiveRecord::RecordInvalid => e
   render json: { error: e.message }, status: :unprocessable_entity
