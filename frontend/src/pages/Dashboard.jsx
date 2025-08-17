@@ -30,8 +30,9 @@ export default function Dashboard() {
   const completed  = challenges.filter(c => c.status === 'expired')
   const active     = challenges.filter(c => c.status !== 'expired')
 
-  const doneCount = completed.length
-  const doneSlots = Math.min(doneCount, 4)
+  const totalSlots = Math.min(4, challenges.length)
+  const doneCount  = completed.length
+  const doneSlots  = Math.min(doneCount, totalSlots)
 
   const patchLocal = (id, attrs) => {
     setWeek(prev => ({
