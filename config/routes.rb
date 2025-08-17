@@ -17,7 +17,9 @@ Rails.application.routes.draw do
       resources :challenges, only: [ :index ], module: :traits
     end
 
+    resources :emotion_tags, only: [ :index ]
+
     get "weeks/current", to: "weeks#current"
-    get "weeks/:offset", to: "weeks#show"
+    get "weeks/:offset", to: "weeks#show", constraints: { offset: /-?\d+/ }
   end
 end
