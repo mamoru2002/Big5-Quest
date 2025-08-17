@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import Button from '../components/ui/Button'
 import { fetchCurrentWeek, updateUserChallenge } from '../api'
+import CompleteModal from '../components/CompleteModal'
 
 export default function Dashboard() {
   const [week, setWeek]   = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [modalUC, setModalUC] = useState(null)
 
   useEffect(() => {
     ;(async () => {
@@ -43,24 +45,6 @@ export default function Dashboard() {
     }))
   }
 
-  async function markDone(uc) {
-    if (!week.editable) return
-    const next = { status: 'expired', exec_count: Math.max(1, uc.exec_count || 0) }
-    patchLocal(uc.id, next)
-    try {
-      await updateUserChallenge(uc.id, next)
-    } catch (e) {
-      console.error(e)
-      patchLocal(uc.id, { status: uc.status, exec_count: uc.exec_count })
-      console.error('updateUserChallenge failed:', {
-   status: e.response?.status,
-   data:   e.response?.data,
-   sent:   e.config?.data,
- })
- alert('更新に失敗しました')
-    }
-  }
-
   async function inc(uc) {
     if (!week.editable) return
     const next = { exec_count: (uc.exec_count || 0) + 1 }
@@ -87,6 +71,10 @@ export default function Dashboard() {
     }
   }
 
+  const handleSaved = (id, fields) => {
+    patchLocal(id, fields)
+  }
+
   return (
     <Layout>
       <h1 className="text-2xl font-bold text-center">
@@ -94,9 +82,9 @@ export default function Dashboard() {
       </h1>
 
       <div className="mt-4 text-center">
-        <p className="font-semibold">今週のチャレンジ：{doneCount}/4 完了！</p>
+        <p className="font-semibold">今週のチャレンジ：{doneCount}/{totalSlots} 完了！</p>
         <div className="flex justify-center gap-4 mt-3">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: totalSlots }).map((_, i) => (
             <div
               key={i}
               className={
@@ -151,6 +139,7 @@ export default function Dashboard() {
                   +
                 </button>
 
+                {/* 回数バッジ */}
                 <div className="w-9 h-9 rounded-full border-2 border-[#2B3541] bg-white
                                 flex items-center justify-center text-sm font-semibold">
                   {uc.exec_count ?? 0}
@@ -171,7 +160,7 @@ export default function Dashboard() {
             {active.map(uc => (
               <Button
                 key={uc.id}
-                onClick={() => markDone(uc)}
+                onClick={() => setModalUC(uc)}
                 disabled={!week.editable}
                 className="w-full bg-[#00A8A5] text-[#F9FAFB]"
               >
@@ -182,6 +171,13 @@ export default function Dashboard() {
         )}
       </section>
 
+      <CompleteModal
+        open={!!modalUC}
+        uc={modalUC}
+        editable={week.editable}
+        onClose={() => setModalUC(null)}
+        onSaved={handleSaved}
+      />
     </Layout>
   )
 }
