@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const baseURL =
-  import.meta.env.VITE_API_BASE_URL || 'https://api.big5-quest.com/api';
+const DEFAULT_BASE = 'https://api.big5-quest.com/api';
+const baseURL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_BASE).replace(/\/+$/, '');
 
 export const api = axios.create({
   baseURL,
@@ -9,34 +9,37 @@ export const api = axios.create({
 });
 
 export async function fetchQuestions(formName) {
-  const res = await api.get(`/diagnosis_forms/${formName}/questions`);
-  return res.data;
+  const { data } = await api.get(`/diagnosis_forms/${encodeURIComponent(formName)}/questions`);
+  return data;
 }
 
 export async function startDiagnosis(formName) {
-  const payload = { diagnosis_result: { form_name: formName } };
-  const res = await api.post('/diagnosis_results', payload);
-  return res.data.id;
+  const { data } = await api.post('/diagnosis_results', {
+    diagnosis_result: { form_name: formName },
+  });
+  return data.id;
 }
 
 export async function submitAnswers(resultId, answers) {
-  await api.post(`/diagnosis_results/${resultId}/answers`, { answers });
+  await api.post(`/diagnosis_results/${encodeURIComponent(resultId)}/answers`, { answers });
 }
 
 export async function completeDiagnosis(resultId) {
-  const res = await api.post(`/diagnosis_results/${resultId}/complete`);
-  return res.data.scores;
+  const { data } = await api.post(`/diagnosis_results/${encodeURIComponent(resultId)}/complete`);
+  return data.scores;
 }
 
 export async function fetchResultScores(id) {
-  const res = await api.get(`/diagnosis_results/${id}`);
-  return res.data.scores;
+  const { data } = await api.get(`/diagnosis_results/${encodeURIComponent(id)}`);
+  return data.scores;
 }
 
 export async function fetchChallengesByTrait(code) {
-  const res = await api.get(`/traits/${code}/challenges`);
-  return res.data;
+  const { data } = await api.get(`/traits/${encodeURIComponent(code)}/challenges`);
+  return data;
 }
+
+export const fetchChallenges = fetchChallengesByTrait;
 
 export async function createUserChallenges(diagnosisResultId, challengeIds) {
   await api.post('/user_challenges', {
@@ -45,29 +48,24 @@ export async function createUserChallenges(diagnosisResultId, challengeIds) {
   });
 }
 
-export async function fetchChallenges(code) {
-  const res = await api.get(`/traits/${code}/challenges`);
-  return res.data;
-}
-
 export async function fetchCurrentWeek() {
-  const res = await api.get('/weeks/current');
-  return res.data;
+  const { data } = await api.get('/weeks/current');
+  return data;
 }
 
 export async function fetchWeek(offset) {
-  const res = await api.get(`/weeks/${offset}`);
-  return res.data;
+  const { data } = await api.get(`/weeks/${encodeURIComponent(offset)}`);
+  return data;
 }
 
 export async function updateUserChallenge(id, payload) {
-  const res = await api.patch(`/user_challenges/${id}`, {
+  const { data } = await api.patch(`/user_challenges/${encodeURIComponent(id)}`, {
     user_challenge: payload,
   });
-  return res.data;
+  return data;
 }
 
 export async function fetchEmotionTags() {
-  const res = await api.get('/emotion_tags');
-  return res.data;
+  const { data } = await api.get('/emotion_tags');
+  return data;
 }
