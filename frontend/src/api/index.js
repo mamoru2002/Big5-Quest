@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const client = axios.create({
-  baseURL: 'http://localhost:3000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
   withCredentials: true,
 });
 
@@ -53,7 +53,7 @@ export async function fetchCurrentWeek() {
 }
 
 export async function fetchWeek(offset) {
-  const res = await client.get('/weeks/show', { params: { offset } });
+  const res = await client.get(`/weeks/${offset}`);
   return res.data;
 }
 
