@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  get "/up", to: proc { [ 200, { "Content-Type" => "text/plain" }, [ "ok" ] ] }
   namespace :api do
     resources :diagnosis_results, only: [ :create, :show ] do
       member do
