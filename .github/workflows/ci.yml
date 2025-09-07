@@ -8,68 +8,51 @@ on:
 jobs:
   scan_ruby:
     runs-on: ubuntu-latest
-
+    env:
+      BUNDLE_WITHOUT: ""   # brakeman を入れるために無効化
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-
-      - name: Scan for common Rails security vulnerabilities using static analysis
-        run: bin/brakeman --no-pager
+      - run: bin/brakeman --no-pager
 
   lint:
     runs-on: ubuntu-latest
+    env:
+      BUNDLE_WITHOUT: ""   # rubocop を入れるために無効化
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-
-      - name: Lint code for consistent style
-        run: bin/rubocop -f github
+      - run: bin/rubocop -f github
 
   test:
     runs-on: ubuntu-latest
-
     services:
       mysql:
-        image: mysql
+        image: mysql:8.0
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+          MYSQL_DATABASE: big5_quest_test
         ports:
-          - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
-
-      # redis:
-      #   image: redis
-      #   ports:
-      #     - 6379:6379
-      #   options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-
+          - "3306:3306"
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot || exit 1"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      BUNDLE_WITHOUT: ""      # dev/test を除外しない
+      RAILS_ENV: test
+      DB_HOST: 127.0.0.1      # database.yml の host 解決を安定させる
     steps:
-      - name: Install packages
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y google-chrome-stable curl default-mysql-client libjemalloc2 libvips
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-
-      - name: Run tests
-        env:
-          RAILS_ENV: test
-          DATABASE_URL: mysql2://127.0.0.1:3306
-        run: bin/rails db:test:prepare test 
+      - run: sudo apt-get update && sudo apt-get install -y libmysqlclient-dev
+      - run: bin/rails db:prepare
+      - run: bundle exec rspec --format progress
