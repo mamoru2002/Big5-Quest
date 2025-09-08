@@ -8,68 +8,68 @@ on:
 jobs:
   scan_ruby:
     runs-on: ubuntu-latest
-
+    env:
+      BUNDLE_WITHOUT: ""
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-
-      - name: Scan for common Rails security vulnerabilities using static analysis
-        run: bin/brakeman --no-pager
+      - run: bundle exec brakeman --no-pager
 
   lint:
     runs-on: ubuntu-latest
+    env:
+      BUNDLE_WITHOUT: ""
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-
-      - name: Lint code for consistent style
-        run: bin/rubocop -f github
+      - run: bundle exec rubocop -f github
 
   test:
     runs-on: ubuntu-latest
-
     services:
       mysql:
-        image: mysql
+        image: mysql:8.0
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+          MYSQL_DATABASE: big5_quest_test
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
 
-      # redis:
-      #   image: redis
-      #   ports:
-      #     - 6379:6379
-      #   options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-
+    env:
+      RAILS_ENV: test
+      BUNDLE_WITHOUT: ""
     steps:
-      - name: Install packages
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y google-chrome-stable curl default-mysql-client libjemalloc2 libvips
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: actions/checkout@v4
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            libmysqlclient-dev mysql-client
+      - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-
-      - name: Run tests
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            mysqladmin ping -h 127.0.0.1 -uroot && break
+            sleep 2
+          done
+      - name: Create test DB if missing (defensive)
+        run: |
+          mysql -h 127.0.0.1 -uroot -e 'CREATE DATABASE IF NOT EXISTS big5_quest_test;'
+      - name: Prepare DB
         env:
-          RAILS_ENV: test
-          DATABASE_URL: mysql2://127.0.0.1:3306
-        run: bin/rails db:test:prepare test 
+          DATABASE_URL: mysql2://root@127.0.0.1:3306/big5_quest_test
+        run: bin/rails db:prepare
+      - name: RSpec
+        run: bundle exec rspec --format progress
