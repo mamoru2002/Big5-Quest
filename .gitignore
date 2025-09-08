@@ -32,5 +32,11 @@
 # Ignore master key for decrypting credentials and more.
 /config/master.key
 
-# Vite キャッシュ
-frontend/.vite/
+# --- deploy key (repo root) ---
+/gh-actions-ec2
+/gh-actions-ec2.pub
+
+# --- Vite / frontend build cache ---
+/frontend/.vite/
+/frontend/dist/
+/frontend/node_modules/
