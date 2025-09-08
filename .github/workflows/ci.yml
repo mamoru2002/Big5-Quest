@@ -9,26 +9,26 @@ jobs:
   scan_ruby:
     runs-on: ubuntu-latest
     env:
-      BUNDLE_WITHOUT: ""   # brakeman を入れるために無効化
+      BUNDLE_WITHOUT: ""
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-      - run: bin/brakeman --no-pager
+      - run: bundle exec brakeman --no-pager
 
   lint:
     runs-on: ubuntu-latest
     env:
-      BUNDLE_WITHOUT: ""   # rubocop を入れるために無効化
+      BUNDLE_WITHOUT: ""
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-      - run: bin/rubocop -f github
+      - run: bundle exec rubocop -f github
 
   test:
     runs-on: ubuntu-latest
@@ -39,20 +39,37 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: "true"
           MYSQL_DATABASE: big5_quest_test
         ports:
-          - "3306:3306"
+          - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot || exit 1"
-          --health-interval=10s --health-timeout=5s --health-retries=10
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+
     env:
-      BUNDLE_WITHOUT: ""      # dev/test を除外しない
       RAILS_ENV: test
-      DB_HOST: 127.0.0.1      # database.yml の host 解決を安定させる
+      BUNDLE_WITHOUT: ""
     steps:
       - uses: actions/checkout@v4
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            libmysqlclient-dev mysql-client
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-      - run: sudo apt-get update && sudo apt-get install -y libmysqlclient-dev
-      - run: bin/rails db:prepare
-      - run: bundle exec rspec --format progress
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            mysqladmin ping -h 127.0.0.1 -uroot && break
+            sleep 2
+          done
+      - name: Create test DB if missing (defensive)
+        run: |
+          mysql -h 127.0.0.1 -uroot -e 'CREATE DATABASE IF NOT EXISTS big5_quest_test;'
+      - name: Prepare DB
+        env:
+          DATABASE_URL: mysql2://root@127.0.0.1:3306/big5_quest_test
+        run: bin/rails db:prepare
+      - name: RSpec
+        run: bundle exec rspec --format progress
