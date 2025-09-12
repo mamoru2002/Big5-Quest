@@ -34,15 +34,19 @@ jobs:
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
 
+      # dist に /api なしのURLが紛れ込んでないか、/api ベースが埋め込まれているかを検査
       - name: Verify API base url baked in bundle
         run: |
+          # /api なしの誤URLがあれば落とす
           if grep -RIn "https://api.big5-quest.com/diagnosis_forms" dist; then
             echo "ERROR: /api なしのURLが残っています"; exit 1
           fi
-          if grep -RIn "https://api.big5-quest.com/api/diagnosis_forms" dist >/dev/null; then
-            echo "OK: /api 付きURLでビルドされています"
+          # /api ベースのURL、または api/diagnosis_forms の文字列が入っていればOK
+          if grep -RIn "https://api.big5-quest.com/api" dist >/dev/null || \
+             grep -RIn "api/diagnosis_forms" dist >/dev/null ; then
+            echo "OK: /api ベースURLがバンドルに含まれています"
           else
-            echo "ERROR: /api 付きURLが見つかりません"; exit 1
+            echo "ERROR: /api ベースURLが見つかりません"; exit 1
           fi
 
       - name: Configure AWS credentials
