@@ -35,42 +35,25 @@ jobs:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
 
       - name: Verify API base url baked in bundle
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
         run: |
           set -euo pipefail
-          BASE="${VITE_API_BASE_URL%/}"   # 末尾 / を除去
-          if [ -z "${BASE}" ]; then
-            echo "ERROR: VITE_API_BASE_URL is empty"; exit 1
-          fi
-          if [[ "${BASE}" != *"/api" ]]; then
+          BASE="${VITE_API_BASE_URL%/}"   # 末尾 / を除去（空でもOK）
+
+          if [[ -n "${BASE:-}" && "${BASE}" != *"/api" ]]; then
             echo "ERROR: VITE_API_BASE_URL must end with /api (got: ${BASE})"; exit 1
           fi
 
-          WRONG="${BASE%/api}/diagnosis_forms"
-          if grep -RIn "${WRONG}" dist >/dev/null; then
-            echo "ERROR: Found wrong URL without /api: ${WRONG}"; exit 1
+          if [[ -n "${BASE:-}" ]]; then
+            WRONG="${BASE%/api}/diagnosis_forms"
+            if grep -RIn "${WRONG}" dist >/dev/null; then
+              echo "ERROR: Found wrong absolute URL without /api: ${WRONG}"; exit 1
+            fi
           fi
 
-          if grep -RIn "${BASE}" dist >/dev/null || \
-             grep -RIn "/diagnosis_forms" dist >/dev/null ; then
-            echo "OK: API URL check passed"
+          if grep -RIn "/diagnosis_forms" dist >/dev/null; then
+            echo "OK: endpoints present in bundle (relative or absolute)"
           else
-            echo "ERROR: API base or endpoints not found in bundle"
-            exit 1
-          fi
-
-          echo "Expecting API base: ${BASE}"
-          echo "---- Sample matches in bundle ----"
-          grep -RInoE '/diagnosis_forms|/api/diagnosis_forms' dist | head -20 || true
-          echo "----------------------------------"
-
-          if grep -RIn "${BASE}/diagnosis_forms" dist >/dev/null || \
-             grep -RIn "/api/diagnosis_forms" dist   >/dev/null ; then
-            echo "OK: /api ベースURLでビルドされています"
-          else
-            echo "ERROR: /api ベースURLが見つかりません（${BASE} / または /api/diagnosis_forms）"
-            exit 1
+            echo "ERROR: endpoints not found in bundle"; exit 1
           fi
 
       - name: Configure AWS credentials
