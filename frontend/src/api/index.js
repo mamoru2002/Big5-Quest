@@ -5,7 +5,7 @@ const baseURL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_BASE).replace(/\/+
 
 export const api = axios.create({
   baseURL,
-  withCredentials: true,
+  withCredentials: false,
 });
 
 export async function fetchQuestions(formName) {
