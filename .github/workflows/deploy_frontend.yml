@@ -39,18 +39,31 @@ jobs:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
         run: |
           set -euo pipefail
-          BASE="${VITE_API_BASE_URL%/}"   # 末尾の / を除去（例: https://api.big5-quest.com/api）
-          echo "Expecting API base: ${BASE}"
+          BASE="${VITE_API_BASE_URL%/}"   # 末尾 / を除去
+          if [ -z "${BASE}" ]; then
+            echo "ERROR: VITE_API_BASE_URL is empty"; exit 1
+          fi
+          if [[ "${BASE}" != *"/api" ]]; then
+            echo "ERROR: VITE_API_BASE_URL must end with /api (got: ${BASE})"; exit 1
+          fi
 
-          echo "---- Found API-like URLs in bundle (for debugging) ----"
-          grep -RInoE 'https?://[^"'\'' ]+/diagnosis_forms|https?://[^"'\'' ]+/api/diagnosis_forms|/api/diagnosis_forms' dist \
-            | sed -E 's/^[^:]+://g' | sort -u || true
-          echo "-------------------------------------------------------"
+          WRONG="${BASE%/api}/diagnosis_forms"
+          if grep -RIn "${WRONG}" dist >/dev/null; then
+            echo "ERROR: Found wrong URL without /api: ${WRONG}"; exit 1
+          fi
 
-          if grep -RIn "${BASE%/api}/diagnosis_forms" dist >/dev/null; then
-            echo "ERROR: /api なしのURLが残っています（${BASE%/api}/diagnosis_forms）"
+          if grep -RIn "${BASE}" dist >/dev/null || \
+             grep -RIn "/diagnosis_forms" dist >/dev/null ; then
+            echo "OK: API URL check passed"
+          else
+            echo "ERROR: API base or endpoints not found in bundle"
             exit 1
           fi
+
+          echo "Expecting API base: ${BASE}"
+          echo "---- Sample matches in bundle ----"
+          grep -RInoE '/diagnosis_forms|/api/diagnosis_forms' dist | head -20 || true
+          echo "----------------------------------"
 
           if grep -RIn "${BASE}/diagnosis_forms" dist >/dev/null || \
              grep -RIn "/api/diagnosis_forms" dist   >/dev/null ; then
