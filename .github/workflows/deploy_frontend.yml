@@ -34,32 +34,19 @@ jobs:
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
 
-      - name: Sanity check: API URLs have /api prefix
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+      - name: Verify API base url baked in bundle
         run: |
-          set -euo pipefail
-          BASE="${VITE_API_BASE_URL%/}"         # 例: https://api.big5-quest.com/api
-          ROOT="${BASE%/api}"                   # 例: https://api.big5-quest.com
-          GOOD="${BASE}/diagnosis_forms"        # 正: https://api.big5-quest.com/api/diagnosis_forms
-          BAD="${ROOT}/diagnosis_forms"         # 誤: https://api.big5-quest.com/diagnosis_forms
-
-          echo "Checking that no BAD URLs exist (without /api)…"
-          if grep -RIl --binary-files=without-match -F "$BAD" dist; then
-            echo "ERROR: /api なしのURLが dist に残っています: $BAD"
-            grep -RIn --binary-files=without-match -F "$BAD" dist || true
-            exit 1
+          if grep -RIn "https://api.big5-quest.com/diagnosis_forms" dist; then
+            echo "ERROR: /api なしのURLが残っています"; exit 1
           fi
-
-          echo "Checking presence of GOOD URLs (with /api)…"
-          if grep -RIn --binary-files=without-match -F "$GOOD" dist >/dev/null; then
-            echo "OK: /api 付きURLのみが使われています"
+          if grep -RIn "https://api.big5-quest.com/api/diagnosis_forms" dist >/dev/null; then
+            echo "OK: /api 付きURLでビルドされています"
           else
-            echo "WARN: 期待する $GOOD が見つかりません。相対パス化の可能性があります。"
+            echo "ERROR: /api 付きURLが見つかりません"; exit 1
           fi
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
