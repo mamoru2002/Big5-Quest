@@ -34,6 +34,14 @@ jobs:
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
 
+      - name: Verify API base url baked in bundle
+        run: |
+          if grep -RIn "https://api.big5-quest.com/diagnosis_forms" dist; then
+            echo "ERROR: /api なしのURLが残っています"; exit 1
+          fi
+          grep -RIn "https://api.big5-quest.com/api/diagnosis_forms" dist >/dev/null \
+            && echo "OK: /api 付きURLでビルドされています"
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -58,4 +66,4 @@ jobs:
         run: |
           aws cloudfront create-invalidation \
             --distribution-id ${{ secrets.DISTRIBUTION_ID }} \
-            --paths "/*"
+            --paths "/index.html"
