@@ -1,12 +1,4 @@
-import axios from 'axios';
-
-const DEFAULT_BASE = 'https://api.big5-quest.com/api';
-const baseURL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_BASE).replace(/\/+$/, '');
-
-export const api = axios.create({
-  baseURL,
-  withCredentials: false,
-});
+import api from "../lib/api";
 
 export async function fetchQuestions(formName) {
   const { data } = await api.get(`/diagnosis_forms/${encodeURIComponent(formName)}/questions`);
@@ -69,3 +61,5 @@ export async function fetchEmotionTags() {
   const { data } = await api.get('/emotion_tags');
   return data;
 }
+
+export { default as api } from "../lib/api";
