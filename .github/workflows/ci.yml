@@ -11,7 +11,7 @@ jobs:
     env:
       BUNDLE_WITHOUT: ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
@@ -23,7 +23,7 @@ jobs:
     env:
       BUNDLE_WITHOUT: ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
@@ -56,7 +56,7 @@ jobs:
       BUNDLE_WITHOUT: ""
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ruby/setup-ruby@v1
         with:
