@@ -1,12 +1,10 @@
-# db/seeds.rb
-
 require 'json'
 
 puts 'Seeding traits ...'
 [
   [ 'O', '開放性',    'Openness' ],
   [ 'C', '誠実性',    'Conscientiousness' ],
-  [ 'E', '外交性',    'Extraversion' ],
+  [ 'E', '外向性',    'Extraversion' ],
   [ 'A', '協調性',    'Agreeableness' ],
   [ 'N', '情緒安定性', 'Neuroticism' ]
 ].each do |code, ja, en|
@@ -65,9 +63,9 @@ end
 
 puts 'Seeding forms_map ...'
 forms_file = Rails.root.join('db/seeds/forms_map.json')
-abort "⚠️ #{forms_file} not found" unless File.exist?(forms_file)
+abort "#{forms_file} not found" unless File.exist?(forms_file)
 forms_map_raw = JSON.parse(File.read(forms_file))
-puts "  ▶️ Keys: #{forms_map_raw.keys.inspect}"
+puts "Keys: #{forms_map_raw.keys.inspect}"
 
 forms_map_raw.each do |form_name, payload|
   flatten_forms_map(payload, form_name).each do |flat_name, uuids|
@@ -76,16 +74,20 @@ forms_map_raw.each do |form_name, payload|
 end
 
 puts 'Seeding challenges ...'
-challenges_path = Rails.root.join('db/seeds/challenges_C.json')
-challenge_items = JSON.parse(File.read(challenges_path), symbolize_names: true)
-conscientious = Trait.find_by!(code: 'C')
-challenge_items.each do |item|
-  Challenge.find_or_create_by!(
-    trait:      conscientious,
-    title:      item[:title],
-    difficulty: item[:difficulty]
-  )
-  puts "  ✔️ Challenge #{item[:title]}"
-end
+Dir.glob(Rails.root.join('db/seeds/challenges_*.json')).sort.each do |path|
+  code = File.basename(path).match(/challenges_([A-Z])\.json/)&.captures&.first
+  unless code
+    warn "Skip #{path} (traitsコードを抽出できません)"
+    next
+  end
 
-puts '✅ Seeding complete.'
+  trait = Trait.find_by!(code: code)
+  items = JSON.parse(File.read(path), symbolize_names: true)
+
+  items.each_with_index do |item, idx|
+    ch = Challenge.find_or_initialize_by(trait: trait, title: item[:title])
+    ch.difficulty = item[:difficulty]
+    ch.save!
+    puts "Challenge(#{code}) #{idx + 1}/#{items.size}: #{ch.title} (diff=#{ch.difficulty})"
+  end
+end
