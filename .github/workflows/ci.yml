@@ -32,47 +32,30 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-
     services:
       mysql:
-        image: mysql:8
-        ports: ["3306:3306"]
+        image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: big5_quest_test
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+        ports: [ "3306:3306" ]
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=60
-
-    env:
-      RAILS_ENV: test
-      DB_HOST: 127.0.0.1
-      DB_PORT: 3306
-      DB_USERNAME: root
-      DB_PASSWORD: root
-      DB_NAME: big5_quest_test
-      BUNDLE_WITHOUT: ""
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot || exit 1"
+          --health-interval=10s --health-timeout=5s --health-retries=10
 
     steps:
       - uses: actions/checkout@v4
-
+      - name: Install MySQL dev headers
+        run: sudo apt-get update && sudo apt-get install -y libmysqlclient-dev
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-
-      - name: Wait for MySQL
-        run: |
-          sudo apt-get update && sudo apt-get install -y mysql-client
-          for i in {1..60}; do
-            mysql -h127.0.0.1 -P3306 -uroot -proot -e 'SELECT 1' && break
-            sleep 2
-          done
-
       - name: DB prepare
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: mysql2://127.0.0.1:3306
         run: bin/rails db:prepare
-
       - name: Run RSpec
+        env:
+          RAILS_ENV: test
         run: bundle exec rspec --format progress
