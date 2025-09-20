@@ -2,10 +2,9 @@ module Api
   class DiagnosisResultsController < ApplicationController
     def show
       result = current_user.diagnosis_results.find(params[:id])
-      render json: { id: result.id, scores: compute_scores(result) }
+      render json: { id: result.id, scores: result.scores_by_trait }
     end
 
-    # POST /api/diagnosis_results
     def create
       pms    = params.require(:diagnosis_result).permit(:form_name)
       form   = DiagnosisForm.find_by!(name: pms[:form_name])
@@ -56,7 +55,7 @@ module Api
     def complete
       result = current_user.diagnosis_results.find(params[:id])
 
-      scores = compute_scores(result)
+      scores = result.scores_by_trait
       DiagnosisCompletion.create!(diagnosis_result: result)
       result.update!(status: :complete)
 
@@ -64,17 +63,6 @@ module Api
 
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => e
       render json: { error: e.message }, status: :unprocessable_entity
-    end
-
-    private
-
-    def compute_scores(result)
-      result.responses.includes(question: :trait)
-            .group_by { |r| r.question.trait.code }
-            .transform_values do |rs|
-              vals = rs.map { |r| r.question.reverse_scored ? (6 - r.value) : r.value }
-              (vals.sum.to_f / vals.size).round(2)
-            end
     end
   end
 end
