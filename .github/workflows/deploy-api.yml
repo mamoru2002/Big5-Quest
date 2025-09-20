@@ -65,4 +65,4 @@ jobs:
             sudo systemctl restart big5quest
             sleep 2
             curl -fsS -H 'Host: api.big5-quest.com' -H 'X-Forwarded-Proto: https' \
-              http://127.0.0.1:3000/up
+              http://127.0.0.1:80/up
