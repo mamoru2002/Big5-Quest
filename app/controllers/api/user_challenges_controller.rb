@@ -3,59 +3,49 @@ module Api
     before_action :set_weekly
 
     def index
-      list = current_user.user_challenges
-                         .includes(:challenge)
-                         .where(weekly_progress: @weekly)
-                         .order(created_at: :asc)
-
-      render json: list.as_json(
-        only:   [ :id, :status, :exec_count ],
-        include: { challenge: { only: [ :id, :title, :difficulty ] } }
-      )
+      @list = current_user.user_challenges
+                          .includes(:challenge)
+                          .where(weekly_progress: @weekly)
+                          .order(created_at: :asc)
+      render :index
     end
 
-def update
-  uc = current_user.user_challenges
-                   .where(weekly_progress: @weekly)
-                   .find(params[:id])
+    def update
+      user_challenge = current_user.user_challenges
+                                   .where(weekly_progress: @weekly)
+                                   .find(params[:id])
 
-  ActiveRecord::Base.transaction do
-    attrs = update_params.slice(:status, :exec_count)
-    uc.update!(attrs) if attrs.present?
+      ActiveRecord::Base.transaction do
+        attrs = update_params.slice(:status, :exec_count)
+        user_challenge.update!(attrs) if attrs.present?
 
-    if update_params.key?(:comment)
-      body = update_params[:comment].to_s.strip
-      if body.present?
-        if uc.user_challenge_comment
-          uc.user_challenge_comment.update!(comment: body)
-        else
-          uc.create_user_challenge_comment!(comment: body)
+        if update_params.key?(:comment)
+          body = update_params[:comment].to_s.strip
+          if body.present?
+            if user_challenge.user_challenge_comment
+              user_challenge.user_challenge_comment.update!(comment: body)
+            else
+              user_challenge.create_user_challenge_comment!(comment: body)
+            end
+          end
+        end
+
+        if update_params.key?(:emotion_tag_ids)
+          new_ids     = Array(update_params[:emotion_tag_ids]).map(&:to_i).uniq
+          current_ids = user_challenge.emotion_tags_user_challenges.pluck(:emotion_tag_id)
+          to_add      = new_ids - current_ids
+          to_remove   = current_ids - new_ids
+
+          user_challenge.emotion_tags_user_challenges.where(emotion_tag_id: to_remove).delete_all if to_remove.any?
+          to_add.each { |tid| user_challenge.emotion_tags_user_challenges.create!(emotion_tag_id: tid) }
         end
       end
+
+      @user_challenge = user_challenge.reload
+      render :update
+    rescue ActiveRecord::RecordInvalid => e
+      render json: { error: e.message }, status: :unprocessable_entity
     end
-
-    if update_params.key?(:emotion_tag_ids)
-      new_ids     = Array(update_params[:emotion_tag_ids]).map(&:to_i).uniq
-      current_ids = uc.emotion_tags_user_challenges.pluck(:emotion_tag_id)
-      to_add      = new_ids - current_ids
-      to_remove   = current_ids - new_ids
-
-      uc.emotion_tags_user_challenges.where(emotion_tag_id: to_remove).delete_all if to_remove.any?
-      to_add.each { |tid| uc.emotion_tags_user_challenges.create!(emotion_tag_id: tid) }
-    end
-  end
-
-  render json: uc.as_json(
-    only: [ :id, :status, :exec_count ],
-      include: {
-        challenge: { only: [ :id, :title, :difficulty ] },
-        user_challenge_comment: { only: [ :id, :comment, :is_public ] },
-        emotion_tags_user_challenges: { only: [ :emotion_tag_id ] }
-      }
-  )
-rescue ActiveRecord::RecordInvalid => e
-  render json: { error: e.message }, status: :unprocessable_entity
-end
 
     def create
       ids = Array(params.require(:challenge_ids))
@@ -96,8 +86,8 @@ end
     end
 
     def update_params
-  params.require(:user_challenge)
-        .permit(:status, :exec_count, :comment, emotion_tag_ids: [])
+      params.require(:user_challenge)
+            .permit(:status, :exec_count, :comment, emotion_tag_ids: [])
     end
   end
 end

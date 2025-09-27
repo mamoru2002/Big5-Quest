@@ -5,7 +5,7 @@ module Api
       @links = @form.diagnosis_forms_questions
                     .includes(:question)
                     .order(:question_order)
-      render :questions
+      render :questions, formats: :json
     rescue ActiveRecord::RecordNotFound
       render json: { error: "Form not found" }, status: :not_found
     end
