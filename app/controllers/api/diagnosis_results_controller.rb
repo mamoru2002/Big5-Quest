@@ -1,8 +1,8 @@
 module Api
   class DiagnosisResultsController < ApplicationController
     def show
-      result = current_user.diagnosis_results.find(params[:id])
-      render json: { id: result.id, scores: result.scores_by_trait }
+      @result = current_user.diagnosis_results.find(params[:id])
+      render :show
     end
 
     def create
@@ -53,14 +53,12 @@ module Api
     end
 
     def complete
-      result = current_user.diagnosis_results.find(params[:id])
+      @result = current_user.diagnosis_results.find(params[:id])
 
-      scores = result.scores_by_trait
-      DiagnosisCompletion.create!(diagnosis_result: result)
-      result.update!(status: :complete)
+      DiagnosisCompletion.create!(diagnosis_result: @result)
+      @result.update!(status: :complete)
 
-      render json: { id: result.id, scores: scores }, status: :ok
-
+      render :complete
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => e
       render json: { error: e.message }, status: :unprocessable_entity
     end
