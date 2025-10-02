@@ -3,7 +3,7 @@ Rails.application.routes.draw do
   namespace :api, defaults: { format: :json } do
     resources :diagnosis_results, only: [ :create, :show ] do
       member do
-        post :answers
+        put :responses
         post :complete
       end
     end
