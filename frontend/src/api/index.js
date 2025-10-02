@@ -16,7 +16,7 @@ export async function startDiagnosis(formName) {
 
 /** 回答送信 */
 export async function submitAnswers(resultId, answers) {
-  await api.post(`/diagnosis_results/${encodeURIComponent(resultId)}/answers`, { answers });
+  await api.put(`/diagnosis_results/${encodeURIComponent(resultId)}/responses`, { responses: answers });
 }
 
 /** 診断完了（スコアを返す） */
