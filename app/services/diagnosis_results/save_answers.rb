@@ -44,30 +44,38 @@ class DiagnosisResults::SaveAnswers
 
   def validate_payload!
     unless @answers.is_a?(Array)
-      raise ValidationFailed, "answers must be an array"
+      raise ValidationFailed, "responses must be an array"
     end
 
     normalized = []
     @answers.each_with_index do |elem, idx|
-      unless elem.is_a?(Hash)
-        raise ValidationFailed, "answers[#{idx}] must be a hash"
-      end
-
-      uuid = elem[:question_uuid] || elem["question_uuid"]
-      raw  = elem[:value]         || elem["value"]
-
-      if uuid.nil? || uuid.to_s.empty?
-        raise ValidationFailed, "answers[#{idx}].question_uuid is missing"
-      end
-
-      int_value =
-        begin
-          Integer(raw)
-        rescue StandardError
+      h =
+        if elem.respond_to?(:to_unsafe_h)
+          elem.to_unsafe_h
+        elsif elem.respond_to?(:to_h)
+          elem.to_h
+        else
           nil
         end
+
+      unless h.is_a?(Hash)
+        raise ValidationFailed, "responses[#{idx}] must be a hash"
+      end
+
+      uuid = h[:question_uuid] || h["question_uuid"]
+      raw  = h[:value]         || h["value"]
+
+      if uuid.nil? || uuid.to_s.strip.empty?
+        raise ValidationFailed, "responses[#{idx}].question_uuid is missing"
+      end
+
+      int_value = begin
+        Integer(raw)
+      rescue StandardError
+        nil
+      end
       unless int_value
-        raise ValidationFailed, "answers[#{idx}].value must be integer"
+        raise ValidationFailed, "responses[#{idx}].value must be integer"
       end
 
       normalized << { question_uuid: uuid.to_s, value: int_value }
@@ -75,6 +83,7 @@ class DiagnosisResults::SaveAnswers
 
     @answers_normalized = normalized
   end
+
   def dedupe_answers(arr)
     seen = {}
     arr.reverse_each do |h|
