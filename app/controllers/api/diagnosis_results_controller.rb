@@ -29,29 +29,22 @@ module Api
       render json: { error: e.message }, status: :unprocessable_entity
     end
 
-    def answers
-      result = current_user.diagnosis_results.find(params[:id])
-      pms = params.require(:answers)
+def responses
+  result = current_user.diagnosis_results.find(params[:id])
 
-      uuids      = pms.map { |a| a[:question_uuid] }
-      uuid_to_id = Question.where(uuid: uuids).pluck(:uuid, :id).to_h
+  payload = params.require(:responses)
 
-      rows = pms.map do |a|
-        {
-          diagnosis_result_id: result.id,
-          question_id:         uuid_to_id.fetch(a[:question_uuid]),
-          value:               a[:value].to_i,
-          created_at:          Time.current,
-          updated_at:          Time.current
-        }
-      end
-      Response.insert_all!(rows)
-      render json: { saved: rows.size }, status: :created
+  saved_count = DiagnosisResults::SaveAnswers.call(result: result, answers: payload)
 
-    rescue KeyError, ActiveRecord::RecordNotFound => e
-      render json: { error: e.message }, status: :unprocessable_entity
-    end
+  render json: { saved: saved_count }, status: :created
 
+rescue DiagnosisResults::SaveAnswers::ValidationFailed,
+       DiagnosisResults::SaveAnswers::UnknownQuestionUuid => e
+  # 不正値や未知UUID → 422
+  render json: { error: e.message }, status: :unprocessable_entity
+rescue ActiveRecord::RecordNotFound => e
+  render json: { error: e.message }, status: :not_found
+end
     def complete
       @result = current_user.diagnosis_results.find(params[:id])
 
