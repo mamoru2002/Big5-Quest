@@ -1,3 +1,4 @@
+# app/controllers/api/diagnosis_results_controller.rb
 module Api
   class DiagnosisResultsController < ApplicationController
     def show
@@ -24,32 +25,28 @@ module Api
       end
 
       render json: { id: result.id }, status: :created
-
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => e
       render json: { error: e.message }, status: :unprocessable_entity
     end
 
-def responses
-  result = current_user.diagnosis_results.find(params[:id])
+    def responses
+      result  = current_user.diagnosis_results.find(params[:id])
+      payload = params.require(:responses)
 
-  payload = params.require(:responses)
+      saved_count = DiagnosisResults::SaveAnswers.call(result: result, answers: payload)
+      render json: { saved: saved_count }, status: :created
+    rescue DiagnosisResults::SaveAnswers::ValidationFailed,
+           DiagnosisResults::SaveAnswers::UnknownQuestionUuid => e
+      render json: { error: e.message }, status: :unprocessable_entity
+    rescue ActiveRecord::RecordNotFound => e
+      render json: { error: e.message }, status: :not_found
+    end
 
-  saved_count = DiagnosisResults::SaveAnswers.call(result: result, answers: payload)
-
-  render json: { saved: saved_count }, status: :created
-
-rescue DiagnosisResults::SaveAnswers::ValidationFailed,
-       DiagnosisResults::SaveAnswers::UnknownQuestionUuid => e
-  # 不正値や未知UUID → 422
-  render json: { error: e.message }, status: :unprocessable_entity
-rescue ActiveRecord::RecordNotFound => e
-  render json: { error: e.message }, status: :not_found
-end
     def complete
       @result = current_user.diagnosis_results.find(params[:id])
 
-      DiagnosisCompletion.create!(diagnosis_result: @result)
-      @result.update!(status: :complete)
+      DiagnosisCompletion.find_or_create_by!(diagnosis_result: @result)
+      @result.update!(status: :complete) unless @result.complete?
 
       render :complete
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => e
