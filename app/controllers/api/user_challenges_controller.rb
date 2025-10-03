@@ -11,40 +11,17 @@ module Api
     end
 
     def update
-      user_challenge = current_user.user_challenges
-                                   .where(weekly_progress: @weekly)
-                                   .find(params[:id])
-
-      ActiveRecord::Base.transaction do
-        attrs = update_params.slice(:status, :exec_count)
-        user_challenge.update!(attrs) if attrs.present?
-
-        if update_params.key?(:comment)
-          body = update_params[:comment].to_s.strip
-          if body.present?
-            if user_challenge.user_challenge_comment
-              user_challenge.user_challenge_comment.update!(comment: body)
-            else
-              user_challenge.create_user_challenge_comment!(comment: body)
-            end
-          end
-        end
-
-        if update_params.key?(:emotion_tag_ids)
-          new_ids     = Array(update_params[:emotion_tag_ids]).map(&:to_i).uniq
-          current_ids = user_challenge.emotion_tags_user_challenges.pluck(:emotion_tag_id)
-          to_add      = new_ids - current_ids
-          to_remove   = current_ids - new_ids
-
-          user_challenge.emotion_tags_user_challenges.where(emotion_tag_id: to_remove).delete_all if to_remove.any?
-          to_add.each { |tid| user_challenge.emotion_tags_user_challenges.create!(emotion_tag_id: tid) }
-        end
-      end
-
-      @user_challenge = user_challenge.reload
+      @user_challenge = UserChallenges::Update.call(
+        user:   current_user,
+        weekly: @weekly,
+        id:     params[:id],
+        params: update_params.to_h.symbolize_keys
+      )
       render :update
-    rescue ActiveRecord::RecordInvalid => e
+    rescue UserChallenges::Update::ValidationFailed => e
       render json: { error: e.message }, status: :unprocessable_entity
+    rescue ActiveRecord::RecordNotFound => e
+      render json: { error: e.message }, status: :not_found
     end
 
     def create
