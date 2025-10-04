@@ -45,4 +45,7 @@ group :development, :test do
   # ---- RSpec / FactoryBot ----
   gem "rspec-rails", "~> 8.0"
   gem "factory_bot_rails"
+
+  gem "devise"
+  gem "devise-jwt"
 end
