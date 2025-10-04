@@ -40,29 +40,52 @@ jobs:
           fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
           script: |
             set -euo pipefail
+
             cd /opt/Big5-Quest
 
             # Git 更新
             git fetch --prune
             git reset --hard origin/main
 
-            # Bundler
-            bundle config set without 'development test'
-            bundle config set path 'vendor/bundle'
-            bundle install --no-cache --jobs 3
+            # アプリ環境変数を読み込み（/etc/big5quest.env に本番変数がある前提）
+            # 以降のコマンドは ec2-user で同一ユーザー実行
+            sudo -u ec2-user bash -lc '
+              set -euo pipefail
+              set -a
+              [ -f /etc/big5quest.env ] && source /etc/big5quest.env
+              set +a
 
-            # DB マイグレーション
-            sudo bash -lc '
-            set -a
-            source /etc/big5quest.env
-            set +a
-            cd /opt/Big5-Quest
-            sudo --preserve-env=RAILS_ENV,SECRET_KEY_BASE,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD,SENTRY_DSN,SENTRY_ENV \
-                -u ec2-user bash -lc "RAILS_ENV=production bin/rails db:migrate"
+              cd /opt/Big5-Quest
+
+              # Bundler
+              export RAILS_ENV=production
+              bundle config set without "development test"
+              bundle config set path "vendor/bundle"
+              bundle install --no-cache --jobs 3
+
+              # DB マイグレーション
+              bin/rails db:migrate
             '
 
-            # 再起動 & ヘルスチェック
+            # 再起動
             sudo systemctl restart big5quest
-            sleep 2
-            curl -fsS -H 'Host: api.big5-quest.com' -H 'X-Forwarded-Proto: https' \
-              http://127.0.0.1:80/up
+
+            # ヘルスチェック（最大 ~60秒）
+            tries=30
+            ok=0
+            for i in $(seq 1 $tries); do
+              if curl -fsS -H "Host: api.big5-quest.com" -H "X-Forwarded-Proto: https" \
+                   http://127.0.0.1:80/up >/dev/null; then
+                echo "Health OK"
+                ok=1
+                break
+              fi
+              echo "Waiting app to boot... ($i/$tries)"
+              sleep 2
+            done
+
+            if [ "$ok" -ne 1 ]; then
+              echo "::error::Healthcheck failed. Dumping last logs..."
+              sudo journalctl -u big5quest --no-pager -n 200 || true
+              exit 1
+            fi
