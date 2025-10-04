@@ -14,7 +14,7 @@ module Api
         # JWT を明示的に発行
         scope = :api_user_credential
         token, _payload = Warden::JWTAuth::UserEncoder.new.call(cred, scope, nil)
-        response.set_header('Authorization', "Bearer #{token}")
+        response.set_header("Authorization", "Bearer #{token}")
         render json: { token: token, user: { id: cred.user_id, email: cred.email } }, status: :ok
       end
 
