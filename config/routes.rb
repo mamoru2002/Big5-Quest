@@ -1,9 +1,21 @@
 Rails.application.routes.draw do
   get "/up", to: proc { [ 200, { "Content-Type" => "text/plain" }, [ "ok" ] ] }
+
   namespace :api, defaults: { format: :json } do
+  devise_for :user_credentials, skip: [ :sessions, :registrations, :passwords, :confirmations ]
+
+  devise_scope :api_user_credential do
+    post   "login",            to: "auth/sessions#create"
+    delete "logout",           to: "auth/sessions#destroy"
+    post   "sign_up",          to: "auth/registrations#create"
+    get    "me",               to: "auth/sessions#me"
+    post   "auth/guest_login", to: "auth/guests#create"
+  end
+
+
     resources :diagnosis_results, only: [ :create, :show ] do
       member do
-        put :responses
+        put  :responses
         post :complete
       end
     end
