@@ -1,0 +1,21 @@
+[Unit]
+Description=Big5-Quest Rails API (Puma)
+After=network.target
+
+[Service]
+User=ec2-user
+WorkingDirectory=/opt/Big5-Quest
+Environment=RAILS_ENV=production
+Environment=RBENV_ROOT=/home/ec2-user/.rbenv
+Environment=RBENV_VERSION=3.3.0
+Environment=PATH=/home/ec2-user/.rbenv/bin:/home/ec2-user/.rbenv/shims:/usr/local/bin:/usr/bin:/bin
+Environment=BUNDLE_WITHOUT=development:test
+Environment=BUNDLE_PATH=/opt/Big5-Quest/vendor/bundle
+ExecStartPre=/usr/bin/env bash -lc 'mkdir -p tmp/pids'
+ExecStart=/usr/bin/env bash -lc 'bundle exec puma -b tcp://127.0.0.1:3000 -e ${RAILS_ENV} --pidfile tmp/pids/puma.pid'
+Restart=always
+TimeoutStopSec=30
+PIDFile=/opt/Big5-Quest/tmp/pids/puma.pid
+
+[Install]
+WantedBy=multi-user.target

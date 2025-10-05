@@ -42,11 +42,18 @@ jobs:
             set -euo pipefail
             cd /opt/Big5-Quest
 
-            # Git 更新
+            # 1) Git 更新
             git fetch --prune
             git reset --hard origin/main
 
-            # --- env は root で読む → preserve して ec2-user に渡す ---
+            # 2) systemd ユニット反映（repoから配布）
+            if [ -f ./ops/systemd/big5quest.service ]; then
+              sudo install -m 644 ./ops/systemd/big5quest.service /etc/systemd/system/big5quest.service
+              sudo systemctl daemon-reload
+              sudo systemctl enable big5quest || true
+            fi
+
+            # 3) env は root で読み、ec2-user に引き継いで bundle & migrate
             sudo bash -lc '
               set -euo pipefail
               set -a
@@ -58,23 +65,21 @@ jobs:
                   set -euo pipefail
                   export RBENV_ROOT=\$HOME/.rbenv
                   export PATH=\$RBENV_ROOT/bin:\$RBENV_ROOT/shims:\$PATH
-                  if command -v rbenv >/dev/null 2>&1; then eval \\"$(rbenv init - bash)\\"; fi
-
                   cd /opt/Big5-Quest
                   export RAILS_ENV=production
 
                   echo ruby: \$(ruby -v || true)
                   echo bundle: \$(bundle -v || true)
 
-                  bundle config set without \\"development test\\"
-                  bundle config set path \\"vendor/bundle\\"
+                  bundle config set without '\''development test'\''
+                  bundle config set path '\''vendor/bundle'\''
                   bundle install --no-cache --jobs 3
 
                   bin/rails db:migrate --trace
                 "
             '
 
-            # 再起動 & 状態確認 & ヘルスチェック
+            # 4) 再起動 & 状態確認 & ヘルスチェック
             sudo systemctl restart big5quest
             sleep 1
             echo "== systemd status =="
