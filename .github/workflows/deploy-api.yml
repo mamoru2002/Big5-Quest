@@ -12,6 +12,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Quick SSH ping
         uses: appleboy/ssh-action@v1.2.1
@@ -46,14 +47,14 @@ jobs:
             git fetch --prune
             git reset --hard origin/main
 
-            # 2) systemd ユニット反映（repoから配布）
+            # 2) systemd ユニットをリポジトリから配布（存在する場合）
             if [ -f ./ops/systemd/big5quest.service ]; then
               sudo install -m 644 ./ops/systemd/big5quest.service /etc/systemd/system/big5quest.service
               sudo systemctl daemon-reload
               sudo systemctl enable big5quest || true
             fi
 
-            # 3) env は root で読み、ec2-user に引き継いで bundle & migrate
+            # 3) ルートで /etc/big5quest.env を読み、必要環境を preserve して ec2-user に処理を委譲
             sudo bash -lc '
               set -euo pipefail
               set -a
@@ -63,18 +64,27 @@ jobs:
               sudo --preserve-env=RAILS_ENV,SECRET_KEY_BASE,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD,SENTRY_DSN,SENTRY_ENV \
                 -u ec2-user bash -lc "
                   set -euo pipefail
-                  export RBENV_ROOT=\$HOME/.rbenv
-                  export PATH=\$RBENV_ROOT/bin:\$RBENV_ROOT/shims:\$PATH
                   cd /opt/Big5-Quest
                   export RAILS_ENV=production
+
+                  # Bundler が無ければ入れる（安全）
+                  if ! command -v bundle >/dev/null 2>&1; then
+                    sudo dnf -y install ruby rubygems rubygem-bundler || sudo gem install bundler -N
+                  fi
 
                   echo ruby: \$(ruby -v || true)
                   echo bundle: \$(bundle -v || true)
 
+                  # Bundler 設定 & インストール
                   bundle config set without '\''development test'\''
                   bundle config set path '\''vendor/bundle'\''
                   bundle install --no-cache --jobs 3
 
+                  # Puma の binstub を用意（bin/puma で起動できるように）
+                  bundle binstubs puma --path=bin
+                  test -x bin/puma && echo 'binstub: ok' || echo 'binstub: missing'
+
+                  # DB マイグレーション
                   bin/rails db:migrate --trace
                 "
             '
@@ -82,6 +92,7 @@ jobs:
             # 4) 再起動 & 状態確認 & ヘルスチェック
             sudo systemctl restart big5quest
             sleep 1
+
             echo "== systemd status =="
             sudo systemctl status --no-pager big5quest || true
             echo "== last 50 logs =="
@@ -95,9 +106,12 @@ jobs:
               echo "Waiting app to boot... ($i/$tries)"
               sleep 2
             done
+
             if [ "$ok" -ne 1 ]; then
               echo "::error::Healthcheck failed. Dumping last 200 logs..."
               sudo journalctl -u big5quest --no-pager -n 200 || true
               sudo systemctl cat big5quest || true
               exit 1
             fi
+
+            echo "✅ Deploy finished"
