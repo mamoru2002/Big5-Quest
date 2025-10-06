@@ -9,29 +9,33 @@ jobs:
   scan_ruby:
     runs-on: ubuntu-latest
     env:
-      BUNDLE_WITHOUT: ""
+      BUNDLE_WITHOUT: "production"
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-      - run: bundle exec brakeman --no-pager
+      - run: bundle exec brakeman --no-pager --exit-on-error --no-exit-on-warn
 
   lint:
     runs-on: ubuntu-latest
     env:
-      BUNDLE_WITHOUT: ""
+      BUNDLE_WITHOUT: "production"
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-      - run: bundle exec rubocop -f github
+      - run: bundle exec rubocop -f github --fail-level E
 
   test:
     runs-on: ubuntu-latest
+    env:
+      BUNDLE_WITHOUT: "production"
+      SECRET_KEY_BASE: "dummy-ci"
+      RAILS_ENV: test
     services:
       mysql:
         image: mysql:8.0
@@ -52,10 +56,7 @@ jobs:
           bundler-cache: true
       - name: DB prepare
         env:
-          RAILS_ENV: test
-          DATABASE_URL: mysql2://127.0.0.1:3306
+          DATABASE_URL: mysql2://root@127.0.0.1:3306/big5_quest_test
         run: bin/rails db:prepare
       - name: Run RSpec
-        env:
-          RAILS_ENV: test
         run: bundle exec rspec --format progress
