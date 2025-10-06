@@ -17,13 +17,7 @@ jobs:
       - name: SSH deploy
         uses: appleboy/ssh-action@v1.2.1
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: 22
-          timeout: 30s
-          command_timeout: 30m
-          fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
+          # …略…
           script: |
             set -euo pipefail
             cd /opt/Big5-Quest
@@ -52,7 +46,7 @@ jobs:
               echo "Wrote /etc/big5quest.env"
             '
 
-            # 3) systemd ユニット反映（EnvironmentFile を読む版）
+            # 3) systemd ユニット反映
             if [ -f ./ops/systemd/big5quest.service ]; then
               sudo install -m 644 ./ops/systemd/big5quest.service /etc/systemd/system/big5quest.service
               sudo systemctl daemon-reload
@@ -66,13 +60,15 @@ jobs:
               source /etc/big5quest.env
               set +a
 
+              # ★ ここで値の健全性をチェック（中身は出さない）
+              ruby -e '"'"'v=ENV["SECRET_KEY_BASE"]; abort("SECRET_KEY_BASE missing or blank") if v.nil? || v.empty?; puts "SECRET_KEY_BASE length=#{v.length}"'"'"'
+
               sudo --preserve-env=RAILS_ENV,SECRET_KEY_BASE,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD,SENTRY_DSN,SENTRY_ENV \
                 -u ec2-user bash -lc "
                   set -euo pipefail
                   cd /opt/Big5-Quest
                   export RAILS_ENV=production
 
-                  # Bundler が無ければ入れる
                   if ! command -v bundle >/dev/null 2>&1; then
                     sudo dnf -y install ruby rubygems rubygem-bundler || sudo gem install bundler -N
                   fi
@@ -84,10 +80,10 @@ jobs:
                   bundle config set path \"vendor/bundle\"
                   bundle install --no-cache --jobs 3
 
-                  # Puma の binstub
                   bundle binstubs puma --path=bin
                   test -x bin/puma && echo binstub: ok || echo binstub: missing
 
+                  # migrate 実行
                   bin/rails db:migrate --trace
                 "
             '
@@ -95,12 +91,10 @@ jobs:
             # 5) 再起動 & ログ
             sudo systemctl restart big5quest
             sleep 1
-            echo "== systemd status =="
             sudo systemctl status --no-pager big5quest || true
-            echo "== last 50 logs =="
             sudo journalctl -u big5quest --no-pager -n 50 || true
 
-            # 6) HTTPS でヘルスチェック（80→301の罠回避）
+            # 6) ヘルスチェック（HTTPS直）
             tries=30; ok=0
             for i in $(seq 1 $tries); do
               if curl -fsS -H "Host: api.big5-quest.com" https://127.0.0.1/up >/dev/null; then

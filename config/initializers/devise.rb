@@ -312,9 +312,10 @@ Devise.setup do |config|
 # config.sign_in_after_change_password = true
 
 config.navigational_formats = []  # APIでリダイレクトを避ける
+config.secret_key = Rails.application.secret_key_base
 
 config.jwt do |jwt|
-  jwt.secret = Rails.application.credentials.secret_key_base
+  jwt.secret = Rails.application.secret_key_base
   jwt.dispatch_requests = [
     [ "POST", %r{^/api/login$} ],
     [ "POST", %r{^/api/sign_up$} ],
