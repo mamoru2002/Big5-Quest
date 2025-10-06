@@ -5,15 +5,23 @@ After=network.target
 [Service]
 User=ec2-user
 WorkingDirectory=/opt/Big5-Quest
+
+# 本番環境と Bundler の基本設定
 Environment=RAILS_ENV=production
-Environment=RBENV_ROOT=/home/ec2-user/.rbenv
-Environment=RBENV_VERSION=3.3.0
-Environment=PATH=/home/ec2-user/.rbenv/bin:/home/ec2-user/.rbenv/shims:/usr/local/bin:/usr/bin:/bin
 Environment=BUNDLE_WITHOUT=development:test
 Environment=BUNDLE_PATH=/opt/Big5-Quest/vendor/bundle
+
+# Secrets をここから読む（/etc/big5quest.env は Actions で生成）
+EnvironmentFile=/etc/big5quest.env
+
+# 初回起動で pid ディレクトリが無くて落ちないように
 ExecStartPre=/usr/bin/env bash -lc 'mkdir -p tmp/pids'
+
+# Puma 起動（127.0.0.1:3000 で待ち受け）
 ExecStart=/usr/bin/env bash -lc 'bundle exec puma -b tcp://127.0.0.1:3000 -e ${RAILS_ENV} --pidfile tmp/pids/puma.pid'
+
 Restart=always
+RestartSec=3
 TimeoutStopSec=30
 PIDFile=/opt/Big5-Quest/tmp/pids/puma.pid
 

@@ -33,62 +33,70 @@ jobs:
             git fetch --prune
             git reset --hard origin/main
 
-            # 2) systemd ユニット反映（あれば）
+            # 2) systemd ユニット反映（repo 内にある場合）
             if [ -f ./ops/systemd/big5quest.service ]; then
               sudo install -m 644 ./ops/systemd/big5quest.service /etc/systemd/system/big5quest.service
               sudo systemctl daemon-reload
               sudo systemctl enable big5quest || true
             fi
 
-            # 3) root で .env を読む → preserve-env で ec2-user に渡す
-            sudo -s <<'ROOT'
-            set -euo pipefail
-            cd /opt/Big5-Quest
+            # 3) Secrets から環境ファイルを生成（毎回上書きOK）
+            sudo bash -lc "
+              set -euo pipefail
+              umask 077
+              {
+                echo 'SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}'
+                echo 'DB_HOST=${{ secrets.DB_HOST }}'
+                echo 'DB_PORT=${{ secrets.DB_PORT }}'
+                echo 'DB_NAME=${{ secrets.DB_NAME }}'
+                echo 'DB_USERNAME=${{ secrets.DB_USERNAME }}'
+                echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}'
+                echo 'SENTRY_DSN=${{ secrets.SENTRY_DSN }}'
+                echo 'SENTRY_ENV=production'
+                echo 'RAILS_LOG_TO_STDOUT=true'
+              } > /etc/big5quest.env
+              chown root:root /etc/big5quest.env
+              chmod 600 /etc/big5quest.env
+            "
 
-            # .env 読み込み
-            set -a
-            source /etc/big5quest.env
-            set +a
-
-            # ec2-user としてアプリのセットアップ（環境を引き継ぐ）
+            # 4) ec2-user で bundle & migrate
             sudo --preserve-env=RAILS_ENV,SECRET_KEY_BASE,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD,SENTRY_DSN,SENTRY_ENV \
-              -u ec2-user bash <<'EC2'
-            set -euo pipefail
-            cd /opt/Big5-Quest
-            export RAILS_ENV=production
+              -u ec2-user bash -lc '
+                set -euo pipefail
+                cd /opt/Big5-Quest
+                export RAILS_ENV=production
 
-            # Bundler が無ければ入れる（安全）
-            if ! command -v bundle >/dev/null 2>&1; then
-              sudo dnf -y install ruby rubygems rubygem-bundler || sudo gem install bundler -N
-            fi
+                # Bundler が無ければ入れる（安全）
+                if ! command -v bundle >/dev/null 2>&1; then
+                  sudo dnf -y install ruby rubygems rubygem-bundler || sudo gem install bundler -N
+                fi
 
-            echo "ruby:   $(ruby -v || true)"
-            echo "bundle: $(bundle -v || true)"
+                echo "ruby:   $(ruby -v || true)"
+                echo "bundle: $(bundle -v || true)"
 
-            bundle config set without "development test"
-            bundle config set path "vendor/bundle"
-            bundle install --no-cache --jobs 3
+                bundle config set without "development test"
+                bundle config set path "vendor/bundle"
+                bundle install --no-cache --jobs 3
 
-            # Puma の binstub を用意（bin/puma で起動できるように）
-            bundle binstubs puma --path=bin
-            test -x bin/puma && echo "binstub: ok" || echo "binstub: missing"
+                # Puma の binstub（bin/puma）を用意
+                bundle binstubs puma --path=bin
+                test -x bin/puma && echo "binstub: ok" || echo "binstub: missing"
 
-            bin/rails db:migrate --trace
-            EC2
+                bin/rails db:migrate --trace
+              '
 
-            # 再起動
-            systemctl restart big5quest
+            # 5) 再起動 & 状態確認
+            sudo systemctl restart big5quest
             sleep 1
             echo "== systemd status =="
-            systemctl status --no-pager big5quest || true
-            echo "== last 50 logs =="
-            journalctl -u big5quest --no-pager -n 50 || true
-            ROOT
+            sudo systemctl status --no-pager big5quest || true
+            echo "== last 80 logs =="
+            sudo journalctl -u big5quest --no-pager -n 80 || true
 
-            # 4) ヘルスチェック（nginx 経由）
+            # 6) ヘルスチェック（nginx→Puma 経由、HTTPS直叩き）
             tries=30; ok=0
             for i in $(seq 1 $tries); do
-              if curl -fsS -H "Host: api.big5-quest.com" -H "X-Forwarded-Proto: https" http://127.0.0.1:80/up >/dev/null; then
+              if curl -skfI https://127.0.0.1/up -H "Host: api.big5-quest.com" >/dev/null; then
                 echo "Health OK"; ok=1; break
               fi
               echo "Waiting app to boot... ($i/$tries)"
