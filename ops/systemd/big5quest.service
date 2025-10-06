@@ -6,18 +6,18 @@ After=network.target
 User=ec2-user
 WorkingDirectory=/opt/Big5-Quest
 
-# 本番環境とBundler
+# 本番環境と Bundler の基本設定
 Environment=RAILS_ENV=production
 Environment=BUNDLE_WITHOUT=development:test
 Environment=BUNDLE_PATH=/opt/Big5-Quest/vendor/bundle
 
-# ★ ここからSECRET_KEY_BASE等を読む
+# Secrets をここから読む（/etc/big5quest.env は Actions で生成）
 EnvironmentFile=/etc/big5quest.env
 
-# 初回起動で pid が無くて落ちないように
+# 初回起動で pid ディレクトリが無くて落ちないように
 ExecStartPre=/usr/bin/env bash -lc 'mkdir -p tmp/pids'
 
-# Puma起動
+# Puma 起動（127.0.0.1:3000 で待ち受け）
 ExecStart=/usr/bin/env bash -lc 'bundle exec puma -b tcp://127.0.0.1:3000 -e ${RAILS_ENV} --pidfile tmp/pids/puma.pid'
 
 Restart=always
