@@ -331,8 +331,8 @@ DEPENDENCIES
   bootsnap
   brakeman
   debug
-  devise
-  devise-jwt
+  devise (~> 4.9)
+  devise-jwt (~> 0.12)
   factory_bot_rails
   jbuilder
   mysql2 (>= 0.5.6)
