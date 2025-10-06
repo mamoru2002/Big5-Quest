@@ -14,21 +14,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Quick SSH ping
-        uses: appleboy/ssh-action@v1.2.1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: 22
-          timeout: 30s
-          command_timeout: 2m
-          fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
-          script: |
-            set -e
-            whoami
-            uname -a
-
       - name: SSH deploy
         uses: appleboy/ssh-action@v1.2.1
         with:
@@ -41,63 +26,66 @@ jobs:
           fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
           script: |
             set -euo pipefail
+
             cd /opt/Big5-Quest
 
             # 1) Git 更新
             git fetch --prune
             git reset --hard origin/main
 
-            # 2) systemd ユニットをリポジトリから配布（存在する場合）
+            # 2) systemd ユニット反映（あれば）
             if [ -f ./ops/systemd/big5quest.service ]; then
               sudo install -m 644 ./ops/systemd/big5quest.service /etc/systemd/system/big5quest.service
               sudo systemctl daemon-reload
               sudo systemctl enable big5quest || true
             fi
 
-            # 3) ルートで /etc/big5quest.env を読み、必要環境を preserve して ec2-user に処理を委譲
-            sudo bash -lc '
-              set -euo pipefail
-              set -a
-              source /etc/big5quest.env
-              set +a
+            # 3) root で .env を読む → preserve-env で ec2-user に渡す
+            sudo -s <<'ROOT'
+            set -euo pipefail
+            cd /opt/Big5-Quest
 
-              sudo --preserve-env=RAILS_ENV,SECRET_KEY_BASE,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD,SENTRY_DSN,SENTRY_ENV \
-                -u ec2-user bash -lc "
-                  set -euo pipefail
-                  cd /opt/Big5-Quest
-                  export RAILS_ENV=production
+            # .env 読み込み
+            set -a
+            source /etc/big5quest.env
+            set +a
 
-                  # Bundler が無ければ入れる（安全）
-                  if ! command -v bundle >/dev/null 2>&1; then
-                    sudo dnf -y install ruby rubygems rubygem-bundler || sudo gem install bundler -N
-                  fi
+            # ec2-user としてアプリのセットアップ（環境を引き継ぐ）
+            sudo --preserve-env=RAILS_ENV,SECRET_KEY_BASE,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD,SENTRY_DSN,SENTRY_ENV \
+              -u ec2-user bash <<'EC2'
+            set -euo pipefail
+            cd /opt/Big5-Quest
+            export RAILS_ENV=production
 
-                  echo ruby: \$(ruby -v || true)
-                  echo bundle: \$(bundle -v || true)
+            # Bundler が無ければ入れる（安全）
+            if ! command -v bundle >/dev/null 2>&1; then
+              sudo dnf -y install ruby rubygems rubygem-bundler || sudo gem install bundler -N
+            fi
 
-                  # Bundler 設定 & インストール
-                  bundle config set without '\''development test'\''
-                  bundle config set path '\''vendor/bundle'\''
-                  bundle install --no-cache --jobs 3
+            echo "ruby:   $(ruby -v || true)"
+            echo "bundle: $(bundle -v || true)"
 
-                  # Puma の binstub を用意（bin/puma で起動できるように）
-                  bundle binstubs puma --path=bin
-                  test -x bin/puma && echo 'binstub: ok' || echo 'binstub: missing'
+            bundle config set without "development test"
+            bundle config set path "vendor/bundle"
+            bundle install --no-cache --jobs 3
 
-                  # DB マイグレーション
-                  bin/rails db:migrate --trace
-                "
-            '
+            # Puma の binstub を用意（bin/puma で起動できるように）
+            bundle binstubs puma --path=bin
+            test -x bin/puma && echo "binstub: ok" || echo "binstub: missing"
 
-            # 4) 再起動 & 状態確認 & ヘルスチェック
-            sudo systemctl restart big5quest
+            bin/rails db:migrate --trace
+            EC2
+
+            # 再起動
+            systemctl restart big5quest
             sleep 1
-
             echo "== systemd status =="
-            sudo systemctl status --no-pager big5quest || true
+            systemctl status --no-pager big5quest || true
             echo "== last 50 logs =="
-            sudo journalctl -u big5quest --no-pager -n 50 || true
+            journalctl -u big5quest --no-pager -n 50 || true
+            ROOT
 
+            # 4) ヘルスチェック（nginx 経由）
             tries=30; ok=0
             for i in $(seq 1 $tries); do
               if curl -fsS -H "Host: api.big5-quest.com" -H "X-Forwarded-Proto: https" http://127.0.0.1:80/up >/dev/null; then
@@ -106,12 +94,9 @@ jobs:
               echo "Waiting app to boot... ($i/$tries)"
               sleep 2
             done
-
             if [ "$ok" -ne 1 ]; then
               echo "::error::Healthcheck failed. Dumping last 200 logs..."
               sudo journalctl -u big5quest --no-pager -n 200 || true
               sudo systemctl cat big5quest || true
               exit 1
             fi
-
-            echo "✅ Deploy finished"
