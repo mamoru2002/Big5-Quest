@@ -14,19 +14,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: "Preflight: 必須Secretsの存在チェック"
+        run: |
+          test -n "${{ secrets.DEPLOY_HOST }}" || { echo "::error::DEPLOY_HOST が未設定です"; exit 1; }
+          test -n "${{ secrets.DEPLOY_USER }}" || { echo "::error::DEPLOY_USER が未設定です"; exit 1; }
+          test -n "${{ secrets.DEPLOY_SSH_KEY }}" || { echo "::error::DEPLOY_SSH_KEY が未設定です"; exit 1; }
+          test -n "${{ secrets.DEPLOY_HOST_FINGERPRINT }}" || { echo "::error::DEPLOY_HOST_FINGERPRINT が未設定です"; exit 1; }
+          test -n "${{ secrets.SECRET_KEY_BASE }}" || { echo "::error::SECRET_KEY_BASE が未設定です"; exit 1; }
+          test -n "${{ secrets.DB_HOST }}" || { echo "::error::DB_HOST が未設定です"; exit 1; }
+          test -n "${{ secrets.DB_PORT }}" || { echo "::error::DB_PORT が未設定です"; exit 1; }
+          test -n "${{ secrets.DB_NAME }}" || { echo "::error::DB_NAME が未設定です"; exit 1; }
+          test -n "${{ secrets.DB_USERNAME }}" || { echo "::error::DB_USERNAME が未設定です"; exit 1; }
+          test -n "${{ secrets.DB_PASSWORD }}" || { echo "::error::DB_PASSWORD が未設定です"; exit 1; }
+
       - name: SSH deploy
-        uses: appleboy/ssh-action@v1.2.1
+        uses: appleboy/ssh-action@v1.2.2
         with:
-          # …略…
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
+          port: 22
+          timeout: 30s
+          command_timeout: 30m
           script: |
             set -euo pipefail
             cd /opt/Big5-Quest
 
-            # 1) Git 更新
+            # 1) コード更新
             git fetch --prune
             git reset --hard origin/main
 
-            # 2) Secrets を /etc/big5quest.env に注入（毎回上書き）
+            # 2) /etc/big5quest.env を（毎回）再生成  ※envsは使わずGitHub Expressionsで埋め込む
             sudo bash -lc '
               set -euo pipefail
               umask 077
@@ -40,30 +59,37 @@ jobs:
                 echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}";
                 echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}";
                 echo "SENTRY_ENV=production";
+                echo "RAILS_LOG_TO_STDOUT=1";
               } > "$tmp"
               install -m 600 -o root -g root "$tmp" /etc/big5quest.env
               rm -f "$tmp"
-              echo "Wrote /etc/big5quest.env"
+
+              # 値が空でないか長さだけ検査（ログに中身は出さない）
+              ruby -e '"'"'
+                v = File.foreach("/etc/big5quest.env").grep(/^SECRET_KEY_BASE=/).first&.split("=",2)&.last&.strip
+                abort("SECRET_KEY_BASE in env file is BLANK") if v.nil? || v.empty?
+                puts "SECRET_KEY_BASE length=#{v.length}"
+              '"'"'
             '
 
             # 3) systemd ユニット反映
             if [ -f ./ops/systemd/big5quest.service ]; then
               sudo install -m 644 ./ops/systemd/big5quest.service /etc/systemd/system/big5quest.service
-              sudo systemctl daemon-reload
-              sudo systemctl enable big5quest || true
+            else
+              echo "::warning::./ops/systemd/big5quest.service が無いので既存ユニットを使用します"
             fi
+            sudo systemctl daemon-reload
+            sudo systemctl enable big5quest || true
 
-            # 4) env を root で読み、ec2-user に引き継いで setup & migrate
+            # 4) env をロードしてセットアップ＆マイグレーション（ec2-userで実行）
             sudo bash -lc '
               set -euo pipefail
               set -a
               source /etc/big5quest.env
               set +a
 
-              # ★ ここで値の健全性をチェック（中身は出さない）
-              ruby -e '"'"'v=ENV["SECRET_KEY_BASE"]; abort("SECRET_KEY_BASE missing or blank") if v.nil? || v.empty?; puts "SECRET_KEY_BASE length=#{v.length}"'"'"'
-
-              sudo --preserve-env=RAILS_ENV,SECRET_KEY_BASE,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD,SENTRY_DSN,SENTRY_ENV \
+              # ec2-user のシェルへ必要なENVを引き継ぐ
+              sudo --preserve-env=RAILS_ENV,SECRET_KEY_BASE,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD,SENTRY_DSN,SENTRY_ENV,RAILS_LOG_TO_STDOUT \
                 -u ec2-user bash -lc "
                   set -euo pipefail
                   cd /opt/Big5-Quest
@@ -80,10 +106,7 @@ jobs:
                   bundle config set path \"vendor/bundle\"
                   bundle install --no-cache --jobs 3
 
-                  bundle binstubs puma --path=bin
-                  test -x bin/puma && echo binstub: ok || echo binstub: missing
-
-                  # migrate 実行
+                  bundle binstubs puma --path=bin || true
                   bin/rails db:migrate --trace
                 "
             '
@@ -92,16 +115,15 @@ jobs:
             sudo systemctl restart big5quest
             sleep 1
             sudo systemctl status --no-pager big5quest || true
-            sudo journalctl -u big5quest --no-pager -n 50 || true
+            sudo journalctl -u big5quest --no-pager -n 80 || true
 
-            # 6) ヘルスチェック（HTTPS直）
+            # 6) ヘルスチェック（Nginx→Puma 経由のHTTPS直）
             tries=30; ok=0
             for i in $(seq 1 $tries); do
               if curl -fsS -H "Host: api.big5-quest.com" https://127.0.0.1/up >/dev/null; then
                 echo "Health OK"; ok=1; break
               fi
-              echo "Waiting app to boot... ($i/$tries)"
-              sleep 2
+              echo "Waiting app to boot... ($i/$tries)"; sleep 2
             done
             if [ "$ok" -ne 1 ]; then
               echo "::error::Healthcheck failed. Dumping last 200 logs..."
