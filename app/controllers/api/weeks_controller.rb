@@ -1,6 +1,7 @@
 module Api
   class WeeksController < ApplicationController
     before_action :authenticate_api_user!
+    before_action :ensure_weekly_window!
     def current
       @weekly   = resolve_current_week_for(current_user)
       @editable = true

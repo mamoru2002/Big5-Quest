@@ -1,6 +1,7 @@
 module Api
   class UserChallengesController < 
     before_action :authenticate_api_user!
+    before_action :ensure_weekly_window!
     before_action :set_weekly
 
     def index

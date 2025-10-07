@@ -2,6 +2,7 @@ module Api
   module Traits
     class ChallengesController < ApplicationController
       before_action :authenticate_api_user!
+      before_action :ensure_weekly_window!
       def index
         trait = Trait.find_by!(code: params[:trait_code])
         @list = trait.challenges
