@@ -6,18 +6,12 @@ After=network.target
 Type=simple
 User=ec2-user
 WorkingDirectory=/opt/Big5-Quest
-
 Environment=RAILS_ENV=production
 EnvironmentFile=/etc/big5quest.env
-
-# （任意）起動前にENVファイル存在＆キー定義を確認（中身は出さない）
 ExecStartPre=/usr/bin/bash -lc 'test -s /etc/big5quest.env && grep -q "^SECRET_KEY_BASE=" /etc/big5quest.env'
-
 ExecStart=/usr/bin/env bundle exec puma -b tcp://127.0.0.1:3000
-
 Restart=on-failure
 RestartSec=3
-
 StandardOutput=journal
 StandardError=journal
 
