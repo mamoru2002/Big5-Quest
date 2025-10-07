@@ -1,44 +1,68 @@
-require "active_support/core_ext/integer/time"
+name: Deploy API to EC2
 
-Rails.application.configure do
-  config.enable_reloading = false
-  config.eager_load = true
-  config.consider_all_requests_local = false
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
-  # 静的ファイルのキャッシュ
-  config.public_file_server.headers = { "cache-control" => "public, max-age=#{1.year.to_i}" }
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: true
 
-  # Active Storage
-  config.active_storage.service = :local
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Quick SSH ping
+        uses: appleboy/ssh-action@v1.2.1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: 22
+          timeout: 30s
+          command_timeout: 2m
+          fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
+          script: |
+            set -e
+            whoami
+            uname -a
 
-  # リバプロ前提でHTTPS扱い
-  config.assume_ssl = true
-  config.force_ssl  = true
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1.2.1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: 22
+          timeout: 30s
+          command_timeout: 30m
+          fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
+          script: |
+            set -euo pipefail
+            cd /opt/Big5-Quest
 
-  # /up はHTTP→HTTPSリダイレクトを除外（ヘルスチェック用）
-  config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
+            # Git 更新
+            git fetch --prune
+            git reset --hard origin/main
 
-  # ログ
-  config.log_tags = [:request_id]
-  config.logger   = ActiveSupport::TaggedLogging.logger(STDOUT)
-  config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
-  config.silence_healthcheck_path = "/up"
-  config.active_support.report_deprecations = false
+            # Bundler
+            bundle config set without 'development test'
+            bundle config set path 'vendor/bundle'
+            bundle install --no-cache --jobs 3
 
-  # I18n
-  config.i18n.fallbacks = true
+            # DB マイグレーション
+            sudo bash -lc '
+            set -a
+            source /etc/big5quest.env
+            set +a
+            cd /opt/Big5-Quest
+            sudo --preserve-env=RAILS_ENV,SECRET_KEY_BASE,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD,SENTRY_DSN,SENTRY_ENV \
+                -u ec2-user bash -lc "RAILS_ENV=production bin/rails db:migrate"
+            '
 
-  # DB
-  config.active_record.dump_schema_after_migration = false
-  config.active_record.attributes_for_inspect = [:id]
-
-  # Host 保護（必要なら許可を追加）
-  # config.hosts = ["api.big5-quest.com", /.*\.big5-quest\.com/]
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
-
-  # ★ マスターキーは要求しない（ENVで運用）
-  config.require_master_key = false
-
-  # ★ ここでの secret_key_base の手動設定は不要・禁止！
-  # Rails は ENV["SECRET_KEY_BASE"] を自動で使用します。
-end
+            # 再起動 & ヘルスチェック
+            sudo systemctl restart big5quest
+            sleep 2
+            curl -fsS -H 'Host: api.big5-quest.com' -H 'X-Forwarded-Proto: https' \
+              http://127.0.0.1:3000/up
