@@ -1,5 +1,6 @@
 module Api
   class DiagnosisFormsController < ApplicationController
+    before_action :authenticate_api_user!
     def questions
       @form  = DiagnosisForm.find_by!(name: params[:name])
       @links = @form.diagnosis_forms_questions

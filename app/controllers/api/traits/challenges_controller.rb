@@ -1,6 +1,7 @@
 module Api
   module Traits
     class ChallengesController < ApplicationController
+      before_action :authenticate_api_user!
       def index
         trait = Trait.find_by!(code: params[:trait_code])
         @list = trait.challenges
