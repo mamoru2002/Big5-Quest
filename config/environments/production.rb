@@ -14,13 +14,12 @@ Rails.application.configure do
   # リバプロ前提でHTTPS扱い
   config.assume_ssl = true
   config.force_ssl  = true
-
   # /up はHTTP→HTTPSリダイレクトを除外（ヘルスチェック用）
   config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
 
   # ログ
   config.log_tags = [:request_id]
-  config.logger   = ActiveSupport::TaggedLogging.logger(STDOUT)
+  config.logger   = ActiveSupport::TaggedLogging.logger($stdout)
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
   config.silence_healthcheck_path = "/up"
   config.active_support.report_deprecations = false
@@ -32,13 +31,7 @@ Rails.application.configure do
   config.active_record.dump_schema_after_migration = false
   config.active_record.attributes_for_inspect = [:id]
 
-  # Host 保護（必要なら許可を追加）
-  # config.hosts = ["api.big5-quest.com", /.*\.big5-quest\.com/]
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
-
-  # ★ マスターキーは要求しない（ENVで運用）
+  # credentialsは使わない。ENVで運用
   config.require_master_key = false
-
-  # ★ ここでの secret_key_base の手動設定は不要・禁止！
-  # Rails は ENV["SECRET_KEY_BASE"] を自動で使用します。
+  config.secret_key_base = ENV.fetch("SECRET_KEY_BASE")
 end
