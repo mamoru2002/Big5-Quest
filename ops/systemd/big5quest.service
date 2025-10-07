@@ -3,27 +3,23 @@ Description=Big5-Quest Rails API (Puma)
 After=network.target
 
 [Service]
+Type=simple
 User=ec2-user
 WorkingDirectory=/opt/Big5-Quest
 
-# 本番環境と Bundler の基本設定
 Environment=RAILS_ENV=production
-Environment=BUNDLE_WITHOUT=development:test
-Environment=BUNDLE_PATH=/opt/Big5-Quest/vendor/bundle
-
-# Secrets をここから読む（/etc/big5quest.env は Actions で生成）
 EnvironmentFile=/etc/big5quest.env
 
-# 初回起動で pid ディレクトリが無くて落ちないように
-ExecStartPre=/usr/bin/env bash -lc 'mkdir -p tmp/pids'
+# （任意）起動前にENVファイル存在＆キー定義を確認（中身は出さない）
+ExecStartPre=/usr/bin/bash -lc 'test -s /etc/big5quest.env && grep -q "^SECRET_KEY_BASE=" /etc/big5quest.env'
 
-# Puma 起動（127.0.0.1:3000 で待ち受け）
-ExecStart=/usr/bin/env bash -lc 'bundle exec puma -b tcp://127.0.0.1:3000 -e ${RAILS_ENV} --pidfile tmp/pids/puma.pid'
+ExecStart=/usr/bin/env bundle exec puma -b tcp://127.0.0.1:3000
 
-Restart=always
+Restart=on-failure
 RestartSec=3
-TimeoutStopSec=30
-PIDFile=/opt/Big5-Quest/tmp/pids/puma.pid
+
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
