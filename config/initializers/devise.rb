@@ -8,11 +8,11 @@ Devise.setup do |config|
   require "devise/orm/active_record"
 
   # 認証キー前処理
-  config.case_insensitive_keys = [:email]
-  config.strip_whitespace_keys = [:email]
+  config.case_insensitive_keys = [ :email ]
+  config.strip_whitespace_keys = [ :email ]
 
   # セッション保存スキップ（API向け）
-  config.skip_session_storage = [:http_auth, :jwt]
+  config.skip_session_storage = [ :http_auth, :jwt ]
 
   # パスワードハッシュコスト
   config.stretches = Rails.env.test? ? 1 : 12
@@ -42,14 +42,14 @@ Devise.setup do |config|
   config.jwt do |jwt|
     jwt.secret = Rails.application.secret_key_base
     jwt.dispatch_requests = [
-      ["POST", %r{^/api/login$}],
-      ["POST", %r{^/api/sign_up$}],
-      ["POST", %r{^/api/auth/guest_login$}]
+      [ "POST", %r{^/api/login$} ],
+      [ "POST", %r{^/api/sign_up$} ],
+      [ "POST", %r{^/api/auth/guest_login$} ]
     ]
     jwt.revocation_requests = [
-      ["DELETE", %r{^/api/logout$}]
+      [ "DELETE", %r{^/api/logout$} ]
     ]
     jwt.expiration_time = 14.days.to_i
-    jwt.request_formats = { api_user_credential: [:json] }
+    jwt.request_formats = { api_user_credential: [ :json ] }
   end
 end
