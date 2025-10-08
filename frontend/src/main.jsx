@@ -2,12 +2,13 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
-import './index.css' 
+import './index.css'
+import { ensureAuth } from './lib/api'
 
-ReactDOM
-  .createRoot(document.getElementById('root'))
-  .render(
+ensureAuth().finally(() => {
+  ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <App />
     </BrowserRouter>
   )
+})
