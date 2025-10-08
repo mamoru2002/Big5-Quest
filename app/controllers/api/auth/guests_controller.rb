@@ -15,18 +15,17 @@ module Api
           end
           user = User.create!(user_attrs)
 
-          cred = UserCredential.new(
-            user:          user,
-            email:         guest_email,
-            password_hash: SecureRandom.hex(32)
-          )
-          cred.save!(validate: false)
+          cred = UserCredential.new(user: user, email: guest_email)
+          cred_pwd = SecureRandom.hex(16)
+          cred.password              = cred_pwd
+          cred.password_confirmation = cred_pwd
+          cred.save!
 
           sign_in(:api_user_credential, cred, store: false)
-          token, _payload = Warden::JWTAuth::UserEncoder.new.call(cred, :api_user_credential, nil)
+          token = request.env["warden-jwt_auth.token"]
 
-          response.set_header("Authorization", "Bearer #{token}")
-          render json: { token:, user: { id: user.id, guest: true } }, status: :created
+          response.set_header("Authorization", "Bearer #{token}") if token
+          render json: { token: token, user: { id: user.id, guest: true } }, status: :created
         end
       rescue ActiveRecord::RecordInvalid => e
         render json: { error: e.record.errors.full_messages.to_sentence }, status: :unprocessable_entity
