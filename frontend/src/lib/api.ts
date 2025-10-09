@@ -21,9 +21,7 @@ const api: AxiosInstance = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  // Axios v1系は AxiosHeaders を使うと型エラーが出にくい
   if (!config.headers || !(config.headers as any).set) {
-    // どちらでも可：new AxiosHeaders(...) でも OK
     config.headers = AxiosHeaders.from(config.headers);
   }
   const headers = config.headers as AxiosHeaders;
@@ -62,17 +60,22 @@ api.interceptors.response.use(
   },
   (err) => {
     const status = err.response?.status;
-    const data = err.response?.data;
+    const data   = err.response?.data;
 
     if (status === 401) {
       clearAuthToken();
-      // ここでログイン画面へ飛ばす等（任意）
+      // 任意: ログイン画面へ
+      // window.location.assign('/login');
     } else if (
       status === 403 &&
       (data?.error === 'diagnosis_required' || data?.error === 'previous_week_missed')
     ) {
-      // 診断に誘導（任意）
+      // ★ ここで診断ページへ飛ばす
+      if (window.location.pathname !== '/diagnosis') {
+        window.location.assign('/diagnosis');
+      }
     }
+
     return Promise.reject(err);
   }
 );
