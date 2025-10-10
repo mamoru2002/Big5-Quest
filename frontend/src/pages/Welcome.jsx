@@ -50,7 +50,7 @@ export default function Welcome() {
           <TealCard>
             <b className="font-extrabold">自分の性格を見つめ直す</b><br />
             性格診断を行い、<br />
-            5つの特性から伸ばしたいものを選択。
+            3つの特性から伸ばしたいものを選択。
           </TealCard>
 
           <ArrowDown />

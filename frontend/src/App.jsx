@@ -8,8 +8,7 @@ import SignIn from './pages/auth/SignIn'
 import SignUp from './pages/auth/SignUp'
 import VerifyNotice from './pages/auth/VerifyNotice'
 import Logout from './pages/auth/Logout'
-import ProtectedRoute from './components/ProtectedRoute' // ★追加
-
+import ProtectedRoute from './components/ProtectedRoute'
 export default function App() {
   return (
     <Routes>
