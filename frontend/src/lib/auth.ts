@@ -1,17 +1,49 @@
-import api, { setAuthToken } from './api';
+import api, { setAuthToken, clearAuthToken } from './api'
 
-type AuthRes = { token: string };
-
-export async function signup(email: string, password: string): Promise<string> {
-  const res = await api.post<AuthRes>('/api/auth/signup', { email, password });
-  const token = res.data.token;
-  setAuthToken(token);
-  return token;
+export type SignUpParams = {
+  nickname?: string
+  email: string
+  password: string
 }
 
-export async function login(email: string, password: string): Promise<string> {
-  const res = await api.post<AuthRes>('/api/auth/login', { email, password });
-  const token = res.data.token;
-  setAuthToken(token);
-  return token;
+export const AuthAPI = {
+  async guestLogin() {
+    const { data } = await api.post('/auth/guest_login')
+    if (data?.token) setAuthToken(data.token)
+    return data
+  },
+  async login(email: string, password: string) {
+    const { data } = await api.post('/login', { email, password })
+    if (data?.token) setAuthToken(data.token)
+    return data
+  },
+  async signUp({ nickname, email, password }: SignUpParams) {
+    const payload = {
+      nickname, // バックエンドが無視してもOK
+      email,
+      password,
+      password_confirmation: password,
+    }
+    const { data } = await api.post('/sign_up', payload)
+    if (data?.token) setAuthToken(data.token)
+    return data
+  },
+  async me() {
+    const { data } = await api.get('/me')
+    return data
+  },
+  async logout() {
+    try {
+      await api.delete('/logout')
+    } finally {
+      clearAuthToken()
+    }
+  },
+}
+
+export async function signup(params: SignUpParams) {
+  return AuthAPI.signUp(params)
+}
+export async function login(email: string, password: string) {
+  return AuthAPI.login(email, password)
 }
