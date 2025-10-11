@@ -34,4 +34,16 @@ Rails.application.configure do
   # credentialsは使わない。ENVで運用
   config.require_master_key = false
   config.secret_key_base = ENV.fetch("SECRET_KEY_BASE")
+    config.action_mailer.default_url_options = {
+    host:     ENV.fetch("MAILER_HOST", "api.big5-quest.com"),
+    protocol: "https"
+  }
+
+  config.action_mailer.asset_host      = ENV.fetch("MAILER_ASSET_HOST", "https://api.big5-quest.com")
+  config.action_mailer.delivery_method = :ses
+  config.action_mailer.perform_caching = false
+  config.action_mailer.raise_delivery_errors = true
+  config.action_mailer.default_options = {
+    from: ENV.fetch("MAIL_FROM", "no-reply@big5-quest.com")
+  }
 end
