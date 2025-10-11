@@ -15,6 +15,13 @@ Rails.application.routes.draw do
       post   "auth/guest_login", to: "auth/guests#create"
     end
 
+    namespace :auth do
+      get  "confirmation", to: "confirmations#show"
+      post "confirmations", to: "confirmations#create"
+      post "passwords",     to: "passwords#create"
+      put  "passwords",     to: "passwords#update"
+    end
+
     resources :diagnosis_results, only: %i[create show] do
       member do
         put  :responses
