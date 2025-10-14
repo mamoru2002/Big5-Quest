@@ -1,6 +1,9 @@
 Rails.application.routes.draw do
   get "/up", to: proc { [ 200, { "Content-Type" => "text/plain" }, [ "ok" ] ] }
 
+  get  "/api/confirmation", to: "api/auth/confirmations#show",   as: :api_user_credential_confirmation
+  post "/api/confirmation", to: "api/auth/confirmations#create"
+
   namespace :api, defaults: { format: :json } do
     devise_for :user_credentials,
                class_name: "UserCredential",
@@ -16,8 +19,6 @@ Rails.application.routes.draw do
     end
 
     namespace :auth do
-      get  "confirmation", to: "confirmations#show"
-      post "confirmations", to: "confirmations#create"
       post "passwords",     to: "passwords#create"
       put  "passwords",     to: "passwords#update"
     end
