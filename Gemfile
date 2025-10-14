@@ -49,3 +49,5 @@ group :development, :test do
   gem "rspec-rails", "~> 8.0"
   gem "factory_bot_rails"
 end
+
+gem "aws-sdk-rails", "~> 5.1"
