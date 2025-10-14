@@ -50,4 +50,4 @@ group :development, :test do
   gem "factory_bot_rails"
 end
 
-gem "aws-sdk-rails", "~> 5.1"
+gem "aws-actionmailer-ses", "~> 1"
