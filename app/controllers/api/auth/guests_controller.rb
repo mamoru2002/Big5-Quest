@@ -23,7 +23,6 @@ module Api
 
           cred.skip_confirmation_notification! if cred.respond_to?(:skip_confirmation_notification!)
           cred.skip_confirmation!              if cred.respond_to?(:skip_confirmation!)
-
           cred.save!
 
           sign_in(:api_user_credential, cred, store: false)
@@ -31,8 +30,24 @@ module Api
                   response.get_header("Authorization")&.split(" ")&.last ||
                   Warden::JWTAuth::UserEncoder.new.call(cred, :api_user_credential, nil).first
 
+          form = DiagnosisForm.find_by(name: "guest_10")
+          next_diag = nil
+          if form
+            weekly = resolve_current_week_for(user)
+            result = DiagnosisResult.find_or_create_by!(user: user, weekly_progress: weekly) do |r|
+              r.diagnosis_form = form
+            end
+            DiagnosisStart.find_or_create_by!(diagnosis_result: result)
+            next_diag = { form_name: form.name, result_id: result.id }
+          end
+
           response.set_header("Authorization", "Bearer #{token}") if token.present?
-          render json: { token:, user: { id: user.id, guest: true } }, status: :created
+
+          render json: {
+            token: token,
+            user:  { id: user.id, guest: true },
+            next_diagnosis: next_diag
+          }, status: :created
         end
       rescue ActiveRecord::RecordInvalid => e
         render json: { error: e.record.errors.full_messages.to_sentence }, status: :unprocessable_entity
