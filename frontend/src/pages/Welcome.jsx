@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import TopBar from '../components/TopBar'
-import { AuthAPI } from '../lib/api'
+import { AuthAPI } from '../lib/auth'
 import Button from '../components/ui/Button'
 
 const COLORS = {
