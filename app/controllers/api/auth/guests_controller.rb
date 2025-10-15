@@ -20,6 +20,10 @@ module Api
           tmp  = SecureRandom.hex(16)
           cred.password              = tmp
           cred.password_confirmation = tmp
+
+          cred.skip_confirmation_notification! if cred.respond_to?(:skip_confirmation_notification!)
+          cred.skip_confirmation!              if cred.respond_to?(:skip_confirmation!)
+
           cred.save!
 
           sign_in(:api_user_credential, cred, store: false)
