@@ -37,18 +37,19 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (res) => {
-    // JWT をヘッダ or 本文から拾って保存
-    const authHeader = (res.headers?.['authorization'] as string) || '';
+    const authHeader = ((res.headers as any)?.['authorization'] as string) || '';
     const headerToken = authHeader.replace(/^Bearer\s+/i, '');
     const bodyToken =
       res.data && typeof res.data === 'object' && 'token' in res.data
         ? (res.data as any).token as string
         : '';
     const token = headerToken || bodyToken;
-    if (token) setAuthToken(token);
+    if (token) {
+      setAuthToken(token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
 
-    // Visit Token も保存
-    const visitHeader = (res.headers?.['x-visit-token'] as string) || '';
+    const visitHeader = ((res.headers as any)?.['x-visit-token'] as string) || '';
     const bodyVisit =
       res.data && typeof res.data === 'object' && 'visit_token' in res.data
         ? (res.data as any).visit_token as string
@@ -64,13 +65,10 @@ api.interceptors.response.use(
 
     if (status === 401) {
       clearAuthToken();
-      // 任意: ログイン画面へ
-      // window.location.assign('/login');
     } else if (
       status === 403 &&
       (data?.error === 'diagnosis_required' || data?.error === 'previous_week_missed')
     ) {
-      // ★ ここで診断ページへ飛ばす
       if (window.location.pathname !== '/diagnosis') {
         window.location.assign('/diagnosis');
       }
@@ -79,27 +77,6 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
-
-// APIラッパ
-export const AuthAPI = {
-  async guestLogin() {
-    const { data } = await api.post('/auth/guest_login');
-    if (data?.token) setAuthToken(data.token);
-    return data; // { token, user: {...} }
-  },
-  async login(email: string, password: string) {
-    const { data } = await api.post('/login', { email, password });
-    if (data?.token) setAuthToken(data.token);
-    return data;
-  },
-  async me() {
-    const { data } = await api.get('/me');
-    return data;
-  },
-  async logout() {
-    try { await api.delete('/logout'); } finally { clearAuthToken(); }
-  },
-};
 
 export const DiagnosisAPI = {
   questions(formName = 'full_50') {
@@ -121,10 +98,4 @@ export const WeeksAPI = {
   show(offset: number) { return api.get(`/weeks/${offset}`).then(r => r.data); },
 };
 
-// ★未認証ならゲストログインしてトークン確保
-export async function ensureAuth(): Promise<void> {
-  if (!getAuthToken()) {
-    await AuthAPI.guestLogin();
-  }
-}
 export default api;
