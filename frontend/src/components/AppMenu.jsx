@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getAuthToken, AuthAPI, clearAuthToken, clearVisitToken } from '../lib/api'
+import { getAuthToken, clearAuthToken, clearVisitToken } from '../lib/api'
+import { AuthAPI } from '../lib/auth'
 
 const COLORS = { teal: '#00A8A5', ink: '#2B3541' }
 
