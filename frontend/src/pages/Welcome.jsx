@@ -35,10 +35,7 @@ export default function Welcome() {
   }
 
   return (
-    <div className="min-h-dvh" style={{ background: COLORS.bg, color: COLORS.ink }}>
-      <TopBar title="BIG5-Quest" rounded />
-
-      <main className="relative mx-auto w-full max-w-[390px] px-5 pb-10">
+    <div className="min-h-dvh" style={{ background: COLORS.bg, color: COLORS.ink }}><main className="relative mx-auto w-full max-w-[390px] px-5 pb-10">
         <div className="pointer-events-none absolute inset-x-0 top-12 -z-10 flex justify-center">
           <div className="w-[152px] h-[152px] rounded-full" style={{ background: COLORS.mint }} aria-hidden />
         </div>
