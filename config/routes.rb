@@ -41,5 +41,13 @@ Rails.application.routes.draw do
 
     get "weeks/current", to: "weeks#current"
     get "weeks/:offset", to: "weeks#show", constraints: { offset: /-?\d+/ }
+
+    get  'stats/summary',       to: 'stats#summary'
+    get  'stats/trait_history', to: 'stats#trait_history'
+
+    get   'week_skips/status',  to: 'week_skips#status'
+    patch 'week_skips',         to: 'week_skips#update'
+
+     resource :profile, only: [:show, :update]
   end
 end
