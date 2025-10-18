@@ -1,4 +1,3 @@
-// frontend/src/App.jsx
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AppShell from './layouts/AppShell';
 
