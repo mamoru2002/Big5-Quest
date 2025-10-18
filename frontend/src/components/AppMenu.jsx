@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { getAuthToken, clearAuthToken, clearVisitToken } from '../lib/api'
 import { AuthAPI } from '../lib/auth'
 
@@ -7,28 +7,31 @@ const COLORS = { teal: '#00A8A5', ink: '#2B3541' }
 
 export default function AppMenu({ open, onClose }) {
   const nav = useNavigate()
+  const loc = useLocation()
   const closeBtnRef = useRef(null)
   const authed = Boolean(getAuthToken())
 
   useEffect(() => {
+    if (!open) return
     const onKey = (e) => { if (e.key === 'Escape') onClose?.() }
-    if (open) {
-      window.addEventListener('keydown', onKey)
-      setTimeout(() => closeBtnRef.current?.focus(), 0)
-    }
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey)
+    const id = setTimeout(() => closeBtnRef.current?.focus(), 0)
+    return () => { window.removeEventListener('keydown', onKey); clearTimeout(id) }
   }, [open, onClose])
 
+  useEffect(() => { if (open) onClose?.() }, [loc.pathname])
+
   const handleLogout = async () => {
-    try { await AuthAPI.logout() } catch (e) { console.debug(e) }
-    try { clearAuthToken() }     catch (e) { console.debug(e) }
-    try { clearVisitToken() }    catch (e) { console.debug(e) }
+    try { await AuthAPI.logout() } catch (_E) { console.debug(_E) }
+    try { clearAuthToken() }     catch (_E) { console.debug(_E) }
+    try { clearVisitToken() }    catch (_E) { console.debug(_E) }
     onClose?.()
     nav('/signin', { replace: true })
   }
 
   const itemsCommon = [
     { to: '/',          label: 'ホーム' },
+    { to: '/mypage',    label: 'マイページ' },
     { to: '/diagnosis', label: '性格診断をはじめる' },
     { to: '/dashboard', label: 'ダッシュボード' },
   ]

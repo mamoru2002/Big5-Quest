@@ -69,7 +69,7 @@ api.interceptors.response.use(
       status === 403 &&
       (data?.error === 'diagnosis_required' || data?.error === 'previous_week_missed')
     ) {
-      if (window.location.pathname !== '/diagnosis') {
+      if (window.location.pathname !== '/diagnosis' && window.location.pathname !== '/mypage') {
         window.location.assign('/diagnosis');
       }
     }

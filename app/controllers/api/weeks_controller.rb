@@ -6,7 +6,7 @@ module Api
       @weekly   = resolve_current_week_for(current_user)
       @editable = true
       preload_week_data(@weekly)
-      render :show # currentとshowの出力を共通化するなら :show を使う
+      render :show
     end
 
     def show

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_11_124346) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_18_171541) do
   create_table "challenges", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.bigint "trait_id", null: false
     t.integer "difficulty", limit: 1, null: false
@@ -206,7 +206,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_11_124346) do
     t.bigint "weekly_progress_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["weekly_progress_id"], name: "index_weekly_pauses_on_weekly_progress_id"
+    t.index ["weekly_progress_id"], name: "index_weekly_pauses_on_weekly_progress_id", unique: true
   end
 
   create_table "weekly_progresses", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
@@ -242,6 +242,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_11_124346) do
   add_foreign_key "user_profiles", "users", on_delete: :cascade
   add_foreign_key "user_visits", "users", on_delete: :cascade
   add_foreign_key "weekly_misses", "weekly_progresses", on_delete: :cascade
-  add_foreign_key "weekly_pauses", "weekly_progresses", on_delete: :cascade
+  add_foreign_key "weekly_pauses", "weekly_progresses"
   add_foreign_key "weekly_progresses", "users"
 end
