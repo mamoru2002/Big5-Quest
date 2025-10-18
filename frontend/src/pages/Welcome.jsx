@@ -18,8 +18,14 @@ export default function Welcome() {
   const onGuestLogin = async () => {
     try {
       setLoading(true)
-      await AuthAPI.guestLogin()
-      nav('/diagnosis', { replace: true })
+      const next = await AuthAPI.guestLogin()
+      const formName = next?.form_name ?? 'guest_10'
+
+      if (next?.result_id) {
+        nav(`/diagnosis?result_id=${next.result_id}&form=${encodeURIComponent(formName)}`, { replace: true })
+      } else {
+        nav(`/diagnosis?form=${encodeURIComponent(formName)}`, { replace: true })
+      }
     } catch (e) {
       console.error('guestLogin failed', e)
       alert('ゲストログインに失敗しました。少し時間をおいて再度お試しください。')
