@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import TopBar from '../../components/TopBar'
 import Button from '../../components/ui/Button'
-import { AuthAPI } from '../../lib/api'
+import { AuthAPI } from '../../lib/auth'
 
 const COLORS = {
   teal: '#00A8A5',

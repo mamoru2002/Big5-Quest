@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AuthAPI, clearAuthToken, clearVisitToken } from '../../lib/api'
+import { AuthAPI } from '../../lib/auth'
+import { clearAuthToken, clearVisitToken } from '../../lib/api'
 
 export default function Logout() {
   const nav = useNavigate()
