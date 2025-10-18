@@ -46,7 +46,7 @@ api.interceptors.response.use(
     const token = headerToken || bodyToken;
     if (token) {
       setAuthToken(token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      (api.defaults.headers as any).common['Authorization'] = `Bearer ${token}`;
     }
 
     const visitHeader = ((res.headers as any)?.['x-visit-token'] as string) || '';
@@ -79,15 +79,20 @@ api.interceptors.response.use(
 );
 
 export const DiagnosisAPI = {
-  questions(formName = 'full_50') {
+  questions(formName: string) {
+    if (!formName) throw new Error('formName is required');
     return api.get(`/diagnosis_forms/${encodeURIComponent(formName)}/questions`).then(r => r.data);
   },
+
   createResult(diagnosis_form_id: number) {
+    if (!diagnosis_form_id) throw new Error('diagnosis_form_id is required');
     return api.post('/diagnosis_results', { diagnosis_form_id }).then(r => r.data);
   },
+
   updateResponses(resultId: number, responses: Array<{ question_uuid: string; value: number }>) {
     return api.put(`/diagnosis_results/${resultId}/responses`, { responses }).then(r => r.data);
   },
+
   complete(resultId: number) {
     return api.post(`/diagnosis_results/${resultId}/complete`).then(r => r.data);
   },
