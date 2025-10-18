@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom'
 import TopBar from '../../components/TopBar'
 import Button from '../../components/ui/Button'
 import { AuthAPI } from '../../lib/auth'
-import api from '../../lib/auth'
 
 const COLORS = {
   teal: '#00A8A5',
@@ -21,10 +20,7 @@ export default function SignUp() {
   const [error, setError]       = useState('')
 
   const doSignUp = async ({ nickname, email, password }) => {
-    if (AuthAPI && typeof AuthAPI.signUp === 'function') {
-      return AuthAPI.signUp(nickname, email, password)
-    }
-    return api.post('/sign_up', { nickname, email, password }).then(r => r.data)
+    return AuthAPI.signUp({ nickname, email, password })
   }
 
   const onSubmit = async (e) => {
@@ -34,7 +30,14 @@ export default function SignUp() {
 
     try {
       setLoading(true)
-      await doSignUp({ nickname: nickname.trim(), email: email.trim(), password })
+      const res = await doSignUp({ nickname: nickname.trim(), email: email.trim(), password })
+
+      if (res?.requires_confirmation) {
+        alert('確認メールを送信しました。メール内リンクを開いてからログインしてください。')
+        nav('/signin', { replace: true })
+        return
+      }
+
       nav('/diagnosis', { replace: true })
     } catch (err) {
       console.error('signup failed', err)
