@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   fetchQuestions,
   startDiagnosis,
@@ -20,11 +20,14 @@ export default function DiagnosisForm() {
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState(null);
   const navigate = useNavigate();
+  const [search] = useSearchParams();
+  const formName      = search.get('form') || 'guest_10';
+  const resultIdParam = search.get('result_id');
 
   useEffect(() => {
     (async () => {
       try {
-        const data = await fetchQuestions('full_50');
+        const data = await fetchQuestions(formName);
         setQuestions(data);
       } catch (e) {
         console.error('fetchQuestions error', e);
@@ -34,8 +37,13 @@ export default function DiagnosisForm() {
       }
 
       try {
-        const id = await startDiagnosis('full_50');
-        setResultId(id);
+        if (resultIdParam) {
+          setResultId(Number(resultIdParam));
+        } else {
+          // result_id が無ければ formName で新規開始
+          const id = await startDiagnosis(formName);
+          setResultId(id);
+        }
       } catch (err) {
         console.error('startDiagnosis error object:', err);
         setError(
@@ -48,7 +56,7 @@ export default function DiagnosisForm() {
 
       setLoading(false);
     })();
-  }, []);
+  }, [formName, resultIdParam]);
 
   if (loading) return <p className="text-center p-4">読み込み中…</p>;
   if (error)   return <p className="text-center p-4 text-red-600 font-semibold whitespace-pre-line">{error}</p>;
@@ -58,16 +66,15 @@ export default function DiagnosisForm() {
   const visible = questions.slice(start, end);
   const answeredCount = Object.keys(answers).length;
 
-  // 丸ボタンのベーススタイル
   const btnBase =
     'flex-shrink-0 w-12 h-12 rounded-full border-2 border-[#2B3541] ' +
     'cursor-pointer transition-colors duration-200';
 
   function handleSelect(uuid, value) {
+    if (!resultId) return;
     setAnswers(prev => {
       const next = { ...prev, [uuid]: value };
 
-      // 今ページの5問がすべて埋まったら送信→次ページへ
       if (visible.every(q => next[q.question_uuid] != null)) {
         const payload = visible.map(q => ({
           question_uuid: q.question_uuid,
@@ -112,7 +119,7 @@ export default function DiagnosisForm() {
             <div className="w-[100px] h-[100px] bg-[#CDEDEC] rounded-full" />
           </div>
           <h1 className="relative text-2xl font-bold text-center">
-            まずは50問の性格診断から！
+            まずは{total}問の性格診断から！
           </h1>
         </div>
       )}
@@ -160,16 +167,14 @@ export default function DiagnosisForm() {
         )}
       </div>
 
-      {/* {answeredCount === total && ( */}
-        <div className="flex justify-center mt-8">
-          <Button
-            onClick={handleFinish}
-            className="bg-[#00A8A5] text-white hover:bg-[#01908d] !rounded-full border-[#00A8A5]"
-          >
-            結果を見る
-          </Button>
-        </div>
-      {/* )} */}
+      <div className="flex justify-center mt-8">
+        <Button
+          onClick={handleFinish}
+          className="bg-[#00A8A5] text-white hover:bg-[#01908d] !rounded-full border-[#00A8A5]"
+        >
+          結果を見る
+        </Button>
+      </div>
     </Layout>
   );
 }
