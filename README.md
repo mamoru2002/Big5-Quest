@@ -4,17 +4,43 @@
 Big5の各特性に対して、診断と「週間チャレンジ」を組み合わせて継続改善を目指すアプリです。初期診断で基準値を取り、以降はユーザーが選んだ特性を中心に週次で簡単な再診断と改善行動の実践を繰り返します。
 
 ## 画面キャプチャ
-<div align="center">
-  <img src="./documents/img/capture/1.png" width="32%" alt="画面キャプチャ1" />
-  <img src="./documents/img/capture/2.png" width="32%" alt="画面キャプチャ2" />
-  <img src="./documents/img/capture/3.png" width="32%" alt="画面キャプチャ3" />
-</div>
-<br/>
-<div align="center">
-  <img src="./documents/img/capture/4.jpg" width="32%" alt="画面キャプチャ4" />
-  <img src="./documents/img/capture/5.png" width="32%" alt="画面キャプチャ5" />
-  <img src="./documents/img/capture/6.png" width="32%" alt="画面キャプチャ6" />
-</div>
+
+### トップページ
+アプリの概要と導線をまとめたページ。ゲストログインで即体験できます。
+- Big5-Quest のコンセプト説明
+- 「ゲストではじめる」／「新規登録」CTA
+<img src="./documents/img/capture/1.png" alt="トップページ" width="900" />
+
+### 診断画面
+フォーカス特性に合わせて出題。直感的な5段階評価でテンポよく回答できます。
+- 進捗バー／残り設問数
+- リッカートスケール（強くそう思う〜全く思わない）
+<img src="./documents/img/capture/2.png" alt="診断画面" width="900" />
+
+### 診断結果画面
+現在の特性スコアを可視化し伸ばしたい特性選択へ誘導します。
+- グラフでの表示
+- 推奨チャレンジや次のステップへの導線
+<img src="./documents/img/capture/3.png" alt="診断結果画面" width="900" />
+
+### チャレンジ選択
+週の始めに 1〜4 件を選択。小さく始めて継続しやすい設計です。
+- 特性ごとのチャレンジ候補
+- 1〜4 件の選択
+- 今週の実行状況がダッシュボードに連携
+<img src="./documents/img/capture/4.jpg" alt="チャレンジ選択" width="900" />
+
+### ダッシュボード
+今週の状況を表示。
+- 今週のチャレンジ進捗と達成数
+<img src="./documents/img/capture/5.png" alt="ダッシュボード" width="900" />
+
+### マイページ
+プロフィールや来週スキップなどの個人設定を管理。
+- 名前／自己紹介の編集
+- 来週スキップのトグル
+- 累計統計
+<img src="./documents/img/capture/6.png" alt="マイページ" width="900" />
 
 ## ER 図
 ![ER 図](./documents/img/er_diagram.png)
@@ -32,7 +58,7 @@ Big5の各特性に対して、診断と「週間チャレンジ」を組み合�
 - フロントエンド: React + Vite, Chart.js
 - バックエンド: Ruby on Rails 8
 - データベース: MySQL
-- 認証: トークンベース（ゲストログイン）
+- 認証: Devise + devise-jwt（JWT）、Devise Confirmable によるメール確認、パスワード再設定、ゲストログイン
 - 監視: Sentry
 
 ---
@@ -46,7 +72,7 @@ Big5の各特性に対して、診断と「週間チャレンジ」を組み合�
   - W15（最終）: 50問（全特性）
 - チャレンジ選択（1〜4件/週）
 - マイページ
-  - 累計統計（達成数/実行数/達成期間）
-  - 特性差分グラフ（W0基準の週次変化）
+  - 累計統計
+  - 特性差分グラフ（初回診断基準の週次変化）
   - 来週スキップ（トグルで予約/解除）
   - プロフィール編集（名前/自己紹介）
