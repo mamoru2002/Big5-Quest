@@ -3,9 +3,9 @@ module Api
     class ConfirmationsController < Devise::ConfirmationsController
       respond_to :json, :html
 
-      before_action { request.env['devise.mapping'] ||= Devise.mappings[:api_user_credential] }
+      before_action { request.env["devise.mapping"] ||= Devise.mappings[:api_user_credential] }
 
-      skip_before_action :require_no_authentication, only: :create
+      skip_before_action :require_no_authentication, only: :create, raise: false
       skip_before_action :authenticate_api_user!, raise: false
 
       def show
