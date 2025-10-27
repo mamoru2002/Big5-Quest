@@ -149,7 +149,7 @@ export default function SignIn() {
             </Button>
 
             <div className="text-center">
-              <Link to="/password_reset" className="underline text-[16px]">
+              <Link to="/forgot" className="underline text-[16px]">
                 パスワードを忘れた方はこちら
               </Link>
             </div>
