@@ -4,7 +4,8 @@ module Api
       respond_to :json
 
       def create
-        resource = UserCredential.send_reset_password_instructions(email: params.require(:email))
+        email = params.require(:email).to_s.strip.downcase
+        resource = UserCredential.send_reset_password_instructions(email: email)
         if successfully_sent?(resource)
           head :ok
         else
