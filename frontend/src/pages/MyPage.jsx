@@ -212,7 +212,7 @@ export default function MyPage() {
 
         <section className="mt-6 rounded-[10px] px-4 py-4" style={{ background: COLORS.mint }}>
           <div className="mx-auto w-[318px] bg-white rounded-[10px] border-[2px] border-[#2B3541] px-5 py-4">
-            <div className="text-[20px]">累計クエスト達成数: {summary?.total_completed ?? 0}</div>
+            <div className="text-[20px]">達成クエスト種類数: {summary?.total_completed ?? 0}</div>
             <div className="text-[20px]">クエスト実行数: {summary?.total_exec ?? 0}</div>
             <div className="text-[20px]">累計達成期間: {summary?.total_weeks_with_any_completion ?? 0}週間</div>
           </div>

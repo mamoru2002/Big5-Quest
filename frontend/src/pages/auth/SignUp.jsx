@@ -18,8 +18,9 @@ export default function SignUp() {
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
 
+  // 送信時だけ API 仕様（name）に合わせる
   const doSignUp = async ({ nickname, email, password }) => {
-    return AuthAPI.signUp({ nickname, email, password })
+    return AuthAPI.signUp({ name: nickname, email, password })
   }
 
   const onSubmit = async (e) => {
@@ -29,14 +30,20 @@ export default function SignUp() {
 
     try {
       setLoading(true)
-      const res = await doSignUp({ nickname: nickname.trim(), email: email.trim(), password })
+      const res = await doSignUp({
+        nickname: nickname.trim(),
+        email: email.trim(),
+        password
+      })
 
+      // 未確認ユーザーは確認案内へ
       if (res?.requires_confirmation) {
         const normalizedEmail = email.trim()
         nav(`/verify?registered=1&email=${encodeURIComponent(normalizedEmail)}`, { replace: true })
         return
       }
 
+      // すぐ使える場合は診断へ
       nav('/diagnosis', { replace: true })
     } catch (err) {
       console.error('signup failed', err)
@@ -51,7 +58,8 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-dvh" style={{ background: COLORS.bg, color: COLORS.ink }}><main className="relative mx-auto w-full max-w-[390px] px-5 pb-10">
+    <div className="min-h-dvh" style={{ background: COLORS.bg, color: COLORS.ink }}>
+      <main className="relative mx-auto w-full max-w-[390px] px-5 pb-10">
         <div className="pointer-events-none absolute inset-x-0 top-12 -z-10 flex justify-center">
           <div className="w-[100px] h-[100px] rounded-full" style={{ background: COLORS.mint }} aria-hidden />
         </div>
