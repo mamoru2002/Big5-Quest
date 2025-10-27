@@ -13,10 +13,9 @@ Rails.application.routes.draw do
       post   "sign_up",          to: "auth/registrations#create"
       get    "me",               to: "auth/sessions#me"
       post   "auth/guest_login", to: "auth/guests#create"
+      get  "confirmation", to: "auth/confirmations#show",   as: :api_user_credential_confirmation
+      post "confirmation", to: "auth/confirmations#create", as: :api_confirmation
     end
-
-    get  "confirmation", to: "auth/confirmations#show",   as: :api_user_credential_confirmation
-    post "confirmation", to: "auth/confirmations#create", as: :api_confirmation
 
     namespace :auth do
       post "passwords", to: "passwords#create"
