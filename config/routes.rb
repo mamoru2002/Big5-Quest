@@ -13,11 +13,8 @@ Rails.application.routes.draw do
       post   "sign_up",          to: "auth/registrations#create"
       get    "me",               to: "auth/sessions#me"
       post   "auth/guest_login", to: "auth/guests#create"
-
-      # ← ここだけに置く（重複禁止）
       get  "confirmation", to: "auth/confirmations#show",   as: :user_credential_confirmation
       post "confirmation", to: "auth/confirmations#create", as: :confirmation
-      # 生成されるヘルパ: api_user_credential_confirmation_path / api_confirmation_path
     end
 
     namespace :auth do
