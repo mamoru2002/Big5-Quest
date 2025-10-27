@@ -3,6 +3,9 @@ json.start_at  @weekly.start_at
 json.end_at    @weekly.start_at + 6
 json.editable  @editable
 json.result_id @result_id
+json.diagnosis_status @diagnosis_status
+json.diagnosis_completed (@diagnosis_status == 'complete')
+json.paused @paused_this_week
 
 json.challenges do
   json.array! @list do |user_challenge|

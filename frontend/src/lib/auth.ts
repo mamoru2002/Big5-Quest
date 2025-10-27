@@ -1,4 +1,11 @@
-import api, { setAuthToken, clearAuthToken, getAuthToken } from './api';
+import api, {
+  setAuthToken,
+  clearAuthToken,
+  getAuthToken,
+  getVisitToken,
+  markGuestSession,
+  clearGuestSession,
+} from './api';
 
 export type SignUpParams = {
   nickname?: string;
@@ -16,12 +23,14 @@ export const AuthAPI = {
     if (token) {
       setAuthToken(token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      markGuestSession();
     }
     return res.data?.next_diagnosis ?? null;
   },
   async login(email: string, password: string) {
     const { data, headers } = await api.post('/login', { email, password });
     const token = ((headers as any)?.['authorization'] as string)?.replace(/^Bearer\s+/i, '') || data?.token;
+    clearGuestSession();
     if (token) {
       setAuthToken(token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -37,11 +46,16 @@ export const AuthAPI = {
     };
     const { data, headers } = await api.post('/sign_up', payload);
     const token = ((headers as any)?.['authorization'] as string)?.replace(/^Bearer\s+/i, '') || data?.token;
+    clearGuestSession();
     if (token) {
       setAuthToken(token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
     return data;
+  },
+
+  async resendConfirmation(email: string) {
+    await api.post('/confirmation', { email });
   },
 
   async me() {
@@ -54,14 +68,31 @@ export const AuthAPI = {
       await api.delete('/logout');
     } finally {
       clearAuthToken();
+      clearGuestSession();
       delete api.defaults.headers.common['Authorization'];
     }
+  },
+  async requestPasswordReset(email: string) {
+    await api.post('/auth/passwords', { email });
+  },
+  async resetPassword(token: string, password: string) {
+    await api.put('/auth/passwords', {
+
+      reset_password_token: token,
+      password,
+      password_confirmation: password,
+    });
   },
 };
 
 export async function ensureAuth(): Promise<void> {
-  if (!getAuthToken()) {
-    await AuthAPI.guestLogin();
+  const token = getAuthToken();
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  }
+  const visitToken = getVisitToken();
+  if (visitToken) {
+    (api.defaults.headers as any).common['X-Visit-Token'] = visitToken;
   }
 }
 

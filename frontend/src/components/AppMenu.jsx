@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { getAuthToken, clearAuthToken, clearVisitToken } from '../lib/api'
+import { getAuthToken, clearAuthToken, clearVisitToken, isGuestSession, clearGuestSession } from '../lib/api'
 import { AuthAPI } from '../lib/auth'
 
 const COLORS = { teal: '#00A8A5', ink: '#2B3541' }
@@ -9,7 +9,9 @@ export default function AppMenu({ open, onClose }) {
   const nav = useNavigate()
   const loc = useLocation()
   const closeBtnRef = useRef(null)
-  const authed = Boolean(getAuthToken())
+  const hasToken = Boolean(getAuthToken())
+  const guestSession = isGuestSession()
+  const authed = hasToken && !guestSession
 
   useEffect(() => {
     if (!open) return
@@ -19,12 +21,13 @@ export default function AppMenu({ open, onClose }) {
     return () => { window.removeEventListener('keydown', onKey); clearTimeout(id) }
   }, [open, onClose])
 
-  useEffect(() => { if (open) onClose?.() }, [loc.pathname])
+  useEffect(() => { if (open) onClose?.() }, [loc.pathname, open, onClose])
 
   const handleLogout = async () => {
     try { await AuthAPI.logout() } catch (_E) { console.debug(_E) }
     try { clearAuthToken() }     catch (_E) { console.debug(_E) }
     try { clearVisitToken() }    catch (_E) { console.debug(_E) }
+    try { clearGuestSession() }  catch (_E) { console.debug(_E) }
     onClose?.()
     nav('/signin', { replace: true })
   }
@@ -32,7 +35,6 @@ export default function AppMenu({ open, onClose }) {
   const itemsCommon = [
     { to: '/',          label: 'ホーム' },
     { to: '/mypage',    label: 'マイページ' },
-    { to: '/diagnosis', label: '性格診断をはじめる' },
     { to: '/dashboard', label: 'ダッシュボード' },
   ]
   const itemsGuest  = [
