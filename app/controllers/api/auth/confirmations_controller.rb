@@ -1,8 +1,12 @@
 module Api
   module Auth
     class ConfirmationsController < Devise::ConfirmationsController
-      skip_before_action :require_no_authentication, only: :create
       respond_to :json, :html
+
+      before_action { request.env['devise.mapping'] ||= Devise.mappings[:api_user_credential] }
+
+      skip_before_action :require_no_authentication, only: :create
+      skip_before_action :authenticate_api_user!, raise: false
 
       def show
         self.resource = resource_class.confirm_by_token(params[:confirmation_token])
@@ -16,10 +20,14 @@ module Api
       end
 
       def create
-        cred = UserCredential.find_by!(email: params.require(:email))
-        cred.resend_confirmation_instructions
-        head :accepted
-      rescue ActiveRecord::RecordNotFound
+        email = params.require(:email).to_s.strip.downcase
+        if (cred = UserCredential.find_by(email: email))
+          begin
+            cred.resend_confirmation_instructions
+          rescue => e
+            Rails.logger.error("resend_confirmation failed: #{e.class} #{e.message}")
+          end
+        end
         head :accepted
       end
     end

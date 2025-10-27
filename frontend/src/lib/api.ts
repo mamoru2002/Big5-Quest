@@ -1,7 +1,8 @@
 import axios, { AxiosInstance, AxiosHeaders } from 'axios';
 
-const AUTH_TOKEN_KEY = 'jwt';
+const AUTH_TOKEN_KEY  = 'jwt';
 const VISIT_TOKEN_KEY = 'visit_token';
+const GUEST_TOKEN_KEY = 'guest_login';
 
 export function getAuthToken(): string | null { return localStorage.getItem(AUTH_TOKEN_KEY); }
 export function setAuthToken(t: string): void { localStorage.setItem(AUTH_TOKEN_KEY, t); }
@@ -10,6 +11,10 @@ export function clearAuthToken(): void { localStorage.removeItem(AUTH_TOKEN_KEY)
 export function getVisitToken(): string | null { return localStorage.getItem(VISIT_TOKEN_KEY); }
 export function setVisitToken(t: string): void { localStorage.setItem(VISIT_TOKEN_KEY, t); }
 export function clearVisitToken(): void { localStorage.removeItem(VISIT_TOKEN_KEY); }
+
+export function markGuestSession(): void { localStorage.setItem(GUEST_TOKEN_KEY, '1'); }
+export function clearGuestSession(): void { localStorage.removeItem(GUEST_TOKEN_KEY); }
+export function isGuestSession(): boolean { return localStorage.getItem(GUEST_TOKEN_KEY) === '1'; }
 
 const DEFAULT_BASE = 'https://api.big5-quest.com/api';
 const baseURL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_BASE).replace(/\/+$/, '');
@@ -65,6 +70,7 @@ api.interceptors.response.use(
 
     if (status === 401) {
       clearAuthToken();
+      clearGuestSession();
     } else if (
       status === 403 &&
       (data?.error === 'diagnosis_required' || data?.error === 'previous_week_missed')
