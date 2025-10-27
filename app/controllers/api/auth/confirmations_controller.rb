@@ -1,3 +1,4 @@
+require "cgi"
 module Api
   module Auth
     class ConfirmationsController < Devise::ConfirmationsController
