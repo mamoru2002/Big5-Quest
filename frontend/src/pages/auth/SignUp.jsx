@@ -33,7 +33,7 @@ export default function SignUp() {
 
       if (res?.requires_confirmation) {
         const normalizedEmail = email.trim()
-        nav(`/verify?email=${encodeURIComponent(normalizedEmail)}&registered=1`, { replace: true })
+        nav(`/verify?registered=1&email=${encodeURIComponent(normalizedEmail)}`, { replace: true })
         return
       }
 

@@ -29,38 +29,14 @@ Rails.application.configure do
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
 
-  # メール
+  # Don't care if the mailer can't send.
   config.action_mailer.raise_delivery_errors = false
+
+  # Make template changes take effect immediately.
   config.action_mailer.perform_caching = false
 
-  mailer_host     = ENV.fetch("DEV_MAILER_HOST", "localhost")
-  mailer_port     = ENV.fetch("DEV_MAILER_PORT", 3000)
-  mailer_protocol = ENV.fetch("DEV_MAILER_PROTOCOL", "http")
-
-  config.action_mailer.default_url_options = {
-    host: mailer_host,
-    port: mailer_port,
-    protocol: mailer_protocol
-  }
-
-  delivery_method = (ENV["DEV_MAILER_DELIVERY_METHOD"] || "file").to_sym
-  config.action_mailer.delivery_method = delivery_method
-  config.action_mailer.perform_deliveries = delivery_method != :test
-
-  if delivery_method == :smtp
-    require "active_model"
-    boolean = ActiveModel::Type::Boolean.new
-
-    config.action_mailer.smtp_settings = {
-      address:              ENV["DEV_SMTP_ADDRESS"] || ENV["SMTP_ADDRESS"],
-      port:                 (ENV["DEV_SMTP_PORT"] || ENV["SMTP_PORT"] || 587).to_i,
-      domain:               ENV["DEV_SMTP_DOMAIN"] || ENV["SMTP_DOMAIN"],
-      user_name:            ENV["DEV_SMTP_USERNAME"] || ENV["SMTP_USERNAME"],
-      password:             ENV["DEV_SMTP_PASSWORD"] || ENV["SMTP_PASSWORD"],
-      authentication:       (ENV["DEV_SMTP_AUTHENTICATION"] || ENV["SMTP_AUTHENTICATION"] || "plain").to_sym,
-      enable_starttls_auto: boolean.cast(ENV.fetch("DEV_SMTP_ENABLE_STARTTLS_AUTO", ENV.fetch("SMTP_ENABLE_STARTTLS_AUTO", "true")))
-    }.compact
-  end
+  # Set localhost to be used by links generated in mailer templates.
+  config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log

@@ -2,7 +2,7 @@
 
 Devise.setup do |config|
   # メール送信者
-  config.mailer_sender = ENV.fetch("MAILER_SENDER", "no-reply@big5-quest.com")
+  config.mailer_sender = "please-change-me-at-config-initializers-devise@example.com"
 
   # ORM
   require "devise/orm/active_record"

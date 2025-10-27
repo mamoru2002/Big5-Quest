@@ -15,10 +15,11 @@ module Api
       end
 
       def create
-        email = params.require(:email).to_s.strip.downcase
-        cred = UserCredential.find_by(email: email)
-        cred&.resend_confirmation_instructions
-        head :accepted
+        cred = UserCredential.find_by!(email: params.require(:email))
+        cred.resend_confirmation_instructions
+        head :ok
+      rescue ActiveRecord::RecordNotFound
+        head :ok
       end
     end
   end

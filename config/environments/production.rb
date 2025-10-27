@@ -34,28 +34,8 @@ Rails.application.configure do
   # credentialsは使わない。ENVで運用
   config.require_master_key = false
   config.secret_key_base = ENV.fetch("SECRET_KEY_BASE")
-
-  config.action_mailer.perform_caching = false
-  config.action_mailer.default_url_options = {
+    config.action_mailer.default_url_options = {
     host:     ENV.fetch("MAILER_HOST", "api.big5-quest.com"),
-    protocol: ENV.fetch("MAILER_PROTOCOL", "https")
+    protocol: "https"
   }
-
-  delivery_method = (ENV["MAILER_DELIVERY_METHOD"] || "smtp").to_sym
-  config.action_mailer.delivery_method = delivery_method
-
-  if delivery_method == :smtp
-    require "active_model"
-    boolean = ActiveModel::Type::Boolean.new
-
-    config.action_mailer.smtp_settings = {
-      address:              ENV["SMTP_ADDRESS"],
-      port:                 ENV.fetch("SMTP_PORT", 587).to_i,
-      domain:               ENV["SMTP_DOMAIN"],
-      user_name:            ENV["SMTP_USERNAME"],
-      password:             ENV["SMTP_PASSWORD"],
-      authentication:       (ENV["SMTP_AUTHENTICATION"] || "login").to_sym,
-      enable_starttls_auto: boolean.cast(ENV.fetch("SMTP_ENABLE_STARTTLS_AUTO", "true"))
-    }.compact
-  end
 end
