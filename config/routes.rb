@@ -8,6 +8,8 @@ Rails.application.routes.draw do
                skip: %i[sessions registrations passwords confirmations]
 
     devise_scope :api_user_credential do
+      get  "confirmation", to: "auth/confirmations#show",   as: :user_credential_confirmation
+      post "confirmation", to: "auth/confirmations#create"
       post   "login",            to: "auth/sessions#create"
       delete "logout",           to: "auth/sessions#destroy"
       post   "sign_up",          to: "auth/registrations#create"
