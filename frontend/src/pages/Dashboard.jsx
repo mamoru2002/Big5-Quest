@@ -1,28 +1,194 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import Button from '../components/ui/Button'
-import { fetchCurrentWeek, updateUserChallenge } from '../api'
+import {
+  fetchCurrentWeek,
+  fetchWeekSkipStatus,
+  fetchMe,
+  updateUserChallenge,
+} from '../api'
 import CompleteModal from '../components/CompleteModal'
+import RedirectInfoModal from '../components/RedirectInfoModal'
+import {
+  buildWeekKey,
+  computeNextWeekKey,
+  hasRedirectedForWeek,
+  isWeekScheduledToSkip,
+  markRedirectedForWeek,
+  markScheduledSkip,
+} from '../lib/weekRedirect'
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const [week, setWeek]   = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [modalUC, setModalUC] = useState(null)
 
+  const [userId, setUserId] = useState(null)
+  const [userReady, setUserReady] = useState(false)
+
+  const [skipStatus, setSkipStatus] = useState(null)
+  const [skipReady, setSkipReady] = useState(false)
+  const [skipFailed, setSkipFailed] = useState(false)
+
+  const [diagnosisStatus, setDiagnosisStatus] = useState('unknown')
+  const [diagnosisReady, setDiagnosisReady] = useState(false)
+
+  const [autoHandled, setAutoHandled] = useState(false)
+  const [redirectModal, setRedirectModal] = useState({
+    open: false,
+    mode: 'diagnosis',
+    target: null,
+    weekKey: null,
+  })
+
   useEffect(() => {
+    let active = true
     ;(async () => {
       try {
         const data = await fetchCurrentWeek()
+        if (!active) return
         setWeek(data)
       } catch (e) {
-        console.error(e)
+        console.error('fetchCurrentWeek failed', e)
+        if (!active) return
         setError('今週のデータ取得に失敗しました')
       } finally {
-        setLoading(false)
+        if (active) setLoading(false)
       }
     })()
+    return () => { active = false }
   }, [])
+
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      try {
+        const status = await fetchWeekSkipStatus()
+        if (!active) return
+        setSkipStatus(status || null)
+        setSkipFailed(false)
+      } catch (e) {
+        console.error('fetchWeekSkipStatus failed', e)
+        if (!active) return
+        setSkipStatus(null)
+        setSkipFailed(true)
+      } finally {
+        if (active) setSkipReady(true)
+      }
+    })()
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      try {
+        const me = await fetchMe()
+        if (!active) return
+        setUserId(me?.id ?? null)
+      } catch (e) {
+        console.error('fetchMe failed', e)
+        if (!active) return
+        setUserId(null)
+      } finally {
+        if (active) setUserReady(true)
+      }
+    })()
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    if (!week) return
+
+    const challengeCount = Array.isArray(week.challenges) ? week.challenges.length : 0
+    const statusFromWeek = typeof week.diagnosis_status === 'string' ? week.diagnosis_status : null
+    const completed = Boolean(week.diagnosis_completed)
+    const hasResult = Boolean(week.result_id)
+
+    if (statusFromWeek === 'complete' || completed || challengeCount > 0) {
+      setDiagnosisStatus('complete')
+    } else if (statusFromWeek === 'incomplete') {
+      setDiagnosisStatus('incomplete')
+    } else if (!hasResult) {
+      setDiagnosisStatus('incomplete')
+    } else {
+      setDiagnosisStatus('unknown')
+    }
+    setDiagnosisReady(true)
+  }, [week])
+
+  useEffect(() => {
+    if (!week || !userId || !skipReady) return
+    const nextKey = computeNextWeekKey(week.start_at)
+    if (!nextKey) return
+    const shouldPause = Boolean(skipStatus?.next_week_paused)
+    markScheduledSkip(userId, nextKey, shouldPause)
+  }, [week, skipStatus, skipReady, userId])
+
+  useEffect(() => {
+    if (autoHandled) return
+    if (!week || !userReady || !skipReady || !diagnosisReady) return
+
+    if (skipFailed) {
+      console.info('skip status unavailable; auto-redirect skipped')
+      setAutoHandled(true)
+      return
+    }
+
+    if (!userId) {
+      console.info('user id unavailable; auto-redirect skipped')
+      setAutoHandled(true)
+      return
+    }
+
+    const weekKey = buildWeekKey(week.start_at)
+    if (!weekKey) {
+      console.info('week key unavailable; auto-redirect skipped')
+      setAutoHandled(true)
+      return
+    }
+
+    const pausedFromWeek = typeof week.paused === 'boolean' ? week.paused : null
+    const isPaused = pausedFromWeek ?? isWeekScheduledToSkip(userId, weekKey)
+    const alreadyRedirected = hasRedirectedForWeek(userId, weekKey)
+
+    if (isPaused) {
+      if (!alreadyRedirected) {
+        setRedirectModal({ open: true, mode: 'rest', target: '/rest', weekKey })
+      } else {
+        navigate('/rest', { replace: true })
+      }
+      setAutoHandled(true)
+      return
+    }
+
+    if (!alreadyRedirected) {
+      setRedirectModal({ open: true, mode: 'diagnosis', target: '/diagnosis', weekKey })
+      setAutoHandled(true)
+      return
+    }
+
+    if (diagnosisStatus === 'incomplete') {
+      navigate('/diagnosis', { replace: true })
+    }
+
+    setAutoHandled(true)
+  }, [autoHandled, week, userReady, skipReady, diagnosisReady, skipFailed, userId, navigate, diagnosisStatus])
+
+  const handleRedirectConfirm = () => {
+    if (!redirectModal.open) return
+    if (redirectModal.weekKey) {
+      markRedirectedForWeek(userId, redirectModal.weekKey)
+    }
+    const target = redirectModal.target
+    setRedirectModal(prev => ({ ...prev, open: false }))
+    if (target) {
+      navigate(target, { replace: true })
+    }
+  }
 
   if (loading) return <p className="text-center p-4">読み込み中…</p>
   if (error)   return <p className="text-center p-4 text-red-600">{error}</p>
@@ -77,6 +243,12 @@ export default function Dashboard() {
 
   return (
     <Layout>
+      <RedirectInfoModal
+        open={redirectModal.open}
+        mode={redirectModal.mode}
+        onConfirm={handleRedirectConfirm}
+      />
+
       <h1 className="text-2xl font-bold text-center">
         チャレンジ{week.week_no}週目
       </h1>
