@@ -1,6 +1,7 @@
 module Api
   module Auth
     class ConfirmationsController < Devise::ConfirmationsController
+      skip_before_action :authenticate_api_user!, raise: false
       respond_to :json, :html
 
       def show
