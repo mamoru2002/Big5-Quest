@@ -32,8 +32,8 @@ export default function SignUp() {
       const res = await doSignUp({ nickname: nickname.trim(), email: email.trim(), password })
 
       if (res?.requires_confirmation) {
-        alert('確認メールを送信しました。メール内リンクを開いてからログインしてください。')
-        nav('/signin', { replace: true })
+        const normalizedEmail = email.trim()
+        nav(`/verify?email=${encodeURIComponent(normalizedEmail)}&registered=1`, { replace: true })
         return
       }
 
