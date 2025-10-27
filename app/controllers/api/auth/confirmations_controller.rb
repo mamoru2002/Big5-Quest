@@ -1,6 +1,7 @@
 module Api
   module Auth
     class ConfirmationsController < Devise::ConfirmationsController
+      skip_before_action :require_no_authentication, only: :create
       respond_to :json, :html
 
       def show
@@ -17,9 +18,9 @@ module Api
       def create
         cred = UserCredential.find_by!(email: params.require(:email))
         cred.resend_confirmation_instructions
-        head :ok
+        head :accepted
       rescue ActiveRecord::RecordNotFound
-        head :ok
+        head :accepted
       end
     end
   end

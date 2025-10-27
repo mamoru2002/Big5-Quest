@@ -1,0 +1,12 @@
+<% confirmation_url = api_user_credential_confirmation_url(confirmation_token: @token) %>
+
+<%= @resource.email %> 様
+
+BIG5-Quest にご登録いただきありがとうございます。
+以下のリンクを開いてメールアドレスの確認を完了すると、サービスを開始できます。
+
+<%= confirmation_url %>
+
+リンクが開けない場合は、上記URLをブラウザにコピーしてアクセスしてください。
+リンクの有効期限は一定時間で切れます。期限が切れた場合は、ログイン画面の「確認メールを再送する」から再度お手続きください。
+このメールに心当たりがない場合は破棄してください。
