@@ -77,6 +77,7 @@ export const AuthAPI = {
   },
   async resetPassword(token: string, password: string) {
     await api.put('/auth/passwords', {
+
       reset_password_token: token,
       password,
       password_confirmation: password,
