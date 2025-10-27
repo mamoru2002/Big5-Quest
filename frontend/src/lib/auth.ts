@@ -44,6 +44,10 @@ export const AuthAPI = {
     return data;
   },
 
+  async resendConfirmation(email: string) {
+    await api.post('/confirmation', { email });
+  },
+
   async me() {
     const { data } = await api.get('/me');
     return data;
