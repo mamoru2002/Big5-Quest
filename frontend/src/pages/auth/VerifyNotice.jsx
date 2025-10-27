@@ -5,11 +5,9 @@ import { AuthAPI } from '../../lib/auth';
 export default function VerifyNotice() {
   const [searchParams] = useSearchParams();
 
-  // サインアップ直後の案内用（/verify?registered=1&email=...）
   const justRegistered  = searchParams.get('registered') === '1';
   const registeredEmail = searchParams.get('email') || '';
 
-  // 再送フォームの初期状態
   const [email, setEmail]           = useState(registeredEmail);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice]         = useState('');
@@ -18,10 +16,8 @@ export default function VerifyNotice() {
   const onSubmit = async (event) => {
     event.preventDefault();
     if (submitting) return;
-
     setNotice('');
     setError('');
-
     try {
       setSubmitting(true);
       await AuthAPI.resendConfirmation(email.trim());
@@ -101,16 +97,10 @@ export default function VerifyNotice() {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
-            <Link
-              to="/"
-              className="inline-flex flex-1 min-w-[140px] justify-center rounded-xl border border-[#2B3541] bg-white px-4 py-2 text-sm font-semibold shadow-sm"
-            >
+            <Link to="/" className="inline-flex flex-1 min-w-[140px] justify-center rounded-xl border border-[#2B3541] bg-white px-4 py-2 text-sm font-semibold shadow-sm">
               トップへ戻る
             </Link>
-            <Link
-              to="/signin"
-              className="inline-flex flex-1 min-w-[140px] justify-center rounded-xl border border-transparent bg-[#CDEDEC] px-4 py-2 text-sm font-semibold text-[#2B3541]"
-            >
+            <Link to="/signin" className="inline-flex flex-1 min-w-[140px] justify-center rounded-xl border border-transparent bg-[#CDEDEC] px-4 py-2 text-sm font-semibold text-[#2B3541]">
               ログイン画面へ
             </Link>
           </div>
