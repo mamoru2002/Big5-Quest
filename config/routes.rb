@@ -13,8 +13,8 @@ Rails.application.routes.draw do
       post   "sign_up",          to: "auth/registrations#create"
       get    "me",               to: "auth/sessions#me"
       post   "auth/guest_login", to: "auth/guests#create"
-      get  "confirmation", to: "auth/confirmations#show",   as: :api_user_credential_confirmation
-      post "confirmation", to: "auth/confirmations#create", as: :api_confirmation
+      get  "confirmation", to: "auth/confirmations#show",   as: :user_credential_confirmation
+      post "confirmation", to: "auth/confirmations#create", as: :confirmation
     end
 
     namespace :auth do
@@ -41,11 +41,11 @@ Rails.application.routes.draw do
 
     resources :emotion_tags, only: [ :index ]
 
-    get "weeks/current", to: "weeks#current"
-    get "weeks/:offset", to: "weeks#show", constraints: { offset: /-?\d+/ }
+    get  "weeks/current", to: "weeks#current"
+    get  "weeks/:offset", to: "weeks#show", constraints: { offset: /-?\d+/ }
 
-    get "stats/summary",       to: "stats#summary"
-    get "stats/trait_history", to: "stats#trait_history"
+    get  "stats/summary",       to: "stats#summary"
+    get  "stats/trait_history", to: "stats#trait_history"
 
     get   "week_skips/status", to: "week_skips#status"
     patch "week_skips",        to: "week_skips#update"
