@@ -10,31 +10,218 @@ import {
 } from '../api'
 import CompleteModal from '../components/CompleteModal'
 import RedirectInfoModal from '../components/RedirectInfoModal'
-import {
-  buildWeekKey,
-  computeNextWeekKey,
-  hasRedirectedForWeek,
-  isWeekScheduledToSkip,
-  markRedirectedForWeek,
-  markScheduledSkip,
-} from '../lib/weekRedirect'
+import formsMapData from '../../../db/seeds/forms_map.json'
+
+const REDIRECT_KEY_PREFIX = 'weekly_redirect_done'
+const SKIP_SCHEDULE_PREFIX = 'weekly_skip_scheduled'
+const FORM_STORAGE_PREFIX = 'weekly_form_choice'
+const FOCUS_TRAIT_STORAGE_KEY = 'focus_trait_code'
+
+function storageAvailable() {
+  try {
+    return typeof window !== 'undefined' && !!window.localStorage
+  } catch {
+    return false
+  }
+}
+
+function parseWeekStart(startAt) {
+  if (!startAt) return null
+  try {
+    if (typeof startAt === 'string' && /^\d{4}-\d{2}-\d{2}/.test(startAt)) {
+      return new Date(`${startAt}T00:00:00Z`)
+    }
+    const parsed = new Date(startAt)
+    if (Number.isNaN(parsed.getTime())) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function toISODateString(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null
+  return date.toISOString().split('T')[0]
+}
+
+function buildWeekKey(startAt) {
+  const parsed = parseWeekStart(startAt)
+  if (!parsed) return null
+  return toISODateString(parsed)
+}
+
+function computeNextWeekKey(startAt) {
+  const parsed = parseWeekStart(startAt)
+  if (!parsed) return null
+  const next = new Date(parsed.getTime())
+  next.setUTCDate(next.getUTCDate() + 7)
+  return toISODateString(next)
+}
+
+function redirectKey(userId, weekKey) {
+  return `${REDIRECT_KEY_PREFIX}:${userId}:${weekKey}`
+}
+function skipKey(userId, weekKey) {
+  return `${SKIP_SCHEDULE_PREFIX}:${userId}:${weekKey}`
+}
+
+function hasRedirectedForWeek(userId, weekKey) {
+  if (!userId || !weekKey || !storageAvailable()) return false
+  try {
+    return window.localStorage.getItem(redirectKey(userId, weekKey)) === '1'
+  } catch {
+    return false
+  }
+}
+function markRedirectedForWeek(userId, weekKey) {
+  if (!userId || !weekKey || !storageAvailable()) return
+  try {
+    window.localStorage.setItem(redirectKey(userId, weekKey), '1')
+  } catch {}
+}
+
+function markScheduledSkip(userId, weekKey, active) {
+  if (!userId || !weekKey || !storageAvailable()) return
+  try {
+    if (active) {
+      window.localStorage.setItem(skipKey(userId, weekKey), '1')
+    } else {
+      window.localStorage.removeItem(skipKey(userId, weekKey))
+    }
+  } catch {}
+}
+function isWeekScheduledToSkip(userId, weekKey) {
+  if (!userId || !weekKey || !storageAvailable()) return false
+  try {
+    return window.localStorage.getItem(skipKey(userId, weekKey)) === '1'
+  } catch {
+    return false
+  }
+}
+
+function buildFormStorageKey(userId, programWeek) {
+  if (!userId && userId !== 0) return null
+  if (programWeek == null) return null
+  return `${FORM_STORAGE_PREFIX}:${userId}:${programWeek}`
+}
+
+function fallbackFull50(reason) {
+  if (reason) console.warn('[weeklyForms] fallback to full_50:', reason)
+  const questions = Array.isArray(formsMapData?.full_50) ? [...formsMapData.full_50] : []
+  return { formName: 'full_50', questionUuids: questions }
+}
+
+function normalizeTrait(code) {
+  if (typeof code !== 'string') return null
+  const upper = code.trim().toUpperCase()
+  return ['E', 'C', 'N'].includes(upper) ? upper : null
+}
+function normalizeBucket(bucket) {
+  if (typeof bucket !== 'string') return null
+  const upper = bucket.trim().toUpperCase()
+  return ['A', 'B', 'C'].includes(upper) ? upper : null
+}
+
+function selectWeeklyForm({
+  focus_trait_code,
+  is_milestone_26,
+  milestone_bucket,
+  is_final_full50,
+  rotation_bucket,
+}) {
+  if (is_final_full50) {
+    return fallbackFull50(null)
+  }
+
+  const trait = normalizeTrait(focus_trait_code)
+  if (!trait) {
+    return fallbackFull50('focus_trait_code missing')
+  }
+
+  if (is_milestone_26) {
+    const bucket = normalizeBucket(milestone_bucket)
+    if (!bucket || !['A', 'B'].includes(bucket)) {
+      return fallbackFull50('milestone bucket missing')
+    }
+    const questions = formsMapData?.milestone_26?.[trait]?.[bucket]
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return fallbackFull50(`missing milestone map for ${trait}/${bucket}`)
+    }
+    return {
+      formName: `milestone_26_${trait.toLowerCase()}_${bucket.toLowerCase()}`,
+      questionUuids: [...questions],
+    }
+  }
+
+  const bucket = normalizeBucket(rotation_bucket) || 'A'
+  const questions = formsMapData?.target_forms?.[trait]?.[bucket]
+  if (!Array.isArray(questions) || questions.length === 0) {
+    return fallbackFull50(`missing target form for ${trait}/${bucket}`)
+  }
+  return {
+    formName: `target_forms_${trait.toLowerCase()}_${bucket.toLowerCase()}`,
+    questionUuids: [...questions],
+  }
+}
+
+function loadWeeklyFormChoice(userId, programWeek) {
+  const key = buildFormStorageKey(userId, programWeek)
+  if (!key || !storageAvailable()) return null
+  try {
+    const raw = window.localStorage.getItem(key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    const formName = typeof parsed.formName === 'string' ? parsed.formName : null
+    const questionUuids = Array.isArray(parsed.questionUuids) ? parsed.questionUuids : []
+    if (!formName) return null
+    return { formName, questionUuids }
+  } catch {
+    return null
+  }
+}
+function saveWeeklyFormChoice(userId, programWeek, payload) {
+  const key = buildFormStorageKey(userId, programWeek)
+  if (!key || !storageAvailable()) return
+  try {
+    const data = {
+      formName: payload?.formName,
+      questionUuids: Array.isArray(payload?.questionUuids) ? payload.questionUuids : [],
+    }
+    window.localStorage.setItem(key, JSON.stringify(data))
+  } catch {}
+}
+
+function readStoredFocusTrait() {
+  try {
+    if (typeof window === 'undefined') return null
+    const value = window.localStorage.getItem(FOCUS_TRAIT_STORAGE_KEY)
+    return value ? value.toUpperCase() : null
+  } catch {
+    return null
+  }
+}
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const [week, setWeek]   = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [modalUC, setModalUC] = useState(null)
 
-  const [userId, setUserId] = useState(null)
+  const [week, setWeek]         = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState(null)
+  const [modalUC, setModalUC]   = useState(null)
+
+  const [userId, setUserId]     = useState(null)
   const [userReady, setUserReady] = useState(false)
 
   const [skipStatus, setSkipStatus] = useState(null)
-  const [skipReady, setSkipReady] = useState(false)
+  const [skipReady, setSkipReady]   = useState(false)
   const [skipFailed, setSkipFailed] = useState(false)
 
   const [diagnosisStatus, setDiagnosisStatus] = useState('unknown')
-  const [diagnosisReady, setDiagnosisReady] = useState(false)
+  const [diagnosisReady, setDiagnosisReady]   = useState(false)
+
+  const [formChoice, setFormChoice] = useState(null)
+  const [formReady, setFormReady]   = useState(false)
 
   const [autoHandled, setAutoHandled] = useState(false)
   const [redirectModal, setRedirectModal] = useState({
@@ -42,7 +229,17 @@ export default function Dashboard() {
     mode: 'diagnosis',
     target: null,
     weekKey: null,
+    variant: 'weekly',
+    questionCount: null,
   })
+
+  const programWeek     = typeof week?.program_week === 'number' ? week.program_week : null
+  const pausedThisWeek  = typeof week?.paused === 'boolean' ? week.paused : false
+  const weekFocusTrait  = typeof week?.focus_trait_code === 'string' ? week.focus_trait_code : null
+  const isMilestoneWeek = Boolean(week?.is_milestone_26)
+  const milestoneBucket = week?.milestone_bucket ?? null
+  const isFinalWeek     = Boolean(week?.is_final_full50)
+  const rotationBucket  = week?.rotation_bucket ?? null
 
   useEffect(() => {
     let active = true
@@ -50,7 +247,7 @@ export default function Dashboard() {
       try {
         const data = await fetchCurrentWeek()
         if (!active) return
-        setWeek(data)
+        setWeek(data || null)
       } catch (e) {
         console.error('fetchCurrentWeek failed', e)
         if (!active) return
@@ -104,9 +301,9 @@ export default function Dashboard() {
     if (!week) return
 
     const challengeCount = Array.isArray(week.challenges) ? week.challenges.length : 0
-    const statusFromWeek = typeof week.diagnosis_status === 'string' ? week.diagnosis_status : null
-    const completed = Boolean(week.diagnosis_completed)
-    const hasResult = Boolean(week.result_id)
+    const statusFromWeek  = typeof week.diagnosis_status === 'string' ? week.diagnosis_status : null
+    const completed       = Boolean(week.diagnosis_completed)
+    const hasResult       = Boolean(week.result_id)
 
     if (statusFromWeek === 'complete' || completed || challengeCount > 0) {
       setDiagnosisStatus('complete')
@@ -119,6 +316,54 @@ export default function Dashboard() {
     }
     setDiagnosisReady(true)
   }, [week])
+
+  useEffect(() => {
+    if (!userId) return
+
+    setFormReady(false)
+
+    if (programWeek == null) {
+      setFormChoice(null)
+      setFormReady(true)
+      return
+    }
+    if (pausedThisWeek) {
+      setFormChoice(null)
+      setFormReady(true)
+      return
+    }
+
+    const existing = loadWeeklyFormChoice(userId, programWeek)
+    if (existing) {
+      setFormChoice(existing)
+      setFormReady(true)
+      return
+    }
+
+    const focusCandidate = weekFocusTrait || readStoredFocusTrait()
+    const selection = selectWeeklyForm({
+      focus_trait_code: focusCandidate,
+      is_milestone_26: isMilestoneWeek,
+      milestone_bucket: milestoneBucket,
+      is_final_full50: isFinalWeek,
+      rotation_bucket: rotationBucket,
+    })
+
+    setFormChoice(selection)
+    if (selection?.formName) {
+      saveWeeklyFormChoice(userId, programWeek, selection)
+    }
+    setFormReady(true)
+  }, [
+    userId,
+    programWeek,
+    pausedThisWeek,
+    weekFocusTrait,
+    isMilestoneWeek,
+    milestoneBucket,
+    isFinalWeek,
+    rotationBucket,
+  ])
 
   useEffect(() => {
     if (!week || !userId || !skipReady) return
@@ -137,7 +382,6 @@ export default function Dashboard() {
       setAutoHandled(true)
       return
     }
-
     if (!userId) {
       console.info('user id unavailable; auto-redirect skipped')
       setAutoHandled(true)
@@ -155,9 +399,28 @@ export default function Dashboard() {
     const isPaused = pausedFromWeek ?? isWeekScheduledToSkip(userId, weekKey)
     const alreadyRedirected = hasRedirectedForWeek(userId, weekKey)
 
+    let diagnosisTarget = '/diagnosis'
+    if (!isPaused) {
+      const resolvedFormName = formChoice?.formName || 'full_50'
+      const params = new URLSearchParams()
+      if (resolvedFormName) params.set('form', resolvedFormName)
+      if (week.result_id) params.set('result_id', week.result_id)
+      const qs = params.toString()
+      diagnosisTarget = `/diagnosis${qs ? `?${qs}` : ''}`
+    }
+    const questionCount = Array.isArray(formChoice?.questionUuids) ? formChoice.questionUuids.length : null
+    const variant = isFinalWeek ? 'final' : isMilestoneWeek ? 'milestone' : 'weekly'
+
     if (isPaused) {
       if (!alreadyRedirected) {
-        setRedirectModal({ open: true, mode: 'rest', target: '/rest', weekKey })
+        setRedirectModal({
+          open: true,
+          mode: 'rest',
+          target: '/rest',
+          weekKey,
+          variant: 'rest',
+          questionCount: null,
+        })
       } else {
         navigate('/rest', { replace: true })
       }
@@ -166,17 +429,37 @@ export default function Dashboard() {
     }
 
     if (!alreadyRedirected) {
-      setRedirectModal({ open: true, mode: 'diagnosis', target: '/diagnosis', weekKey })
+      setRedirectModal({
+        open: true,
+        mode: 'diagnosis',
+        target: diagnosisTarget,
+        weekKey,
+        variant,
+        questionCount,
+      })
       setAutoHandled(true)
       return
     }
 
     if (diagnosisStatus === 'incomplete') {
-      navigate('/diagnosis', { replace: true })
+      navigate(diagnosisTarget, { replace: true })
     }
 
     setAutoHandled(true)
-  }, [autoHandled, week, userReady, skipReady, diagnosisReady, skipFailed, userId, navigate, diagnosisStatus])
+  }, [
+    autoHandled,
+    week,
+    userReady,
+    skipReady,
+    diagnosisReady,
+    skipFailed,
+    userId,
+    navigate,
+    diagnosisStatus,
+    formChoice,
+    isFinalWeek,
+    isMilestoneWeek,
+  ])
 
   const handleRedirectConfirm = () => {
     if (!redirectModal.open) return
@@ -205,9 +488,7 @@ export default function Dashboard() {
   const patchLocal = (id, attrs) => {
     setWeek(prev => ({
       ...prev,
-      challenges: prev.challenges.map(uc =>
-        uc.id === id ? { ...uc, ...attrs } : uc
-      )
+      challenges: prev.challenges.map(uc => (uc.id === id ? { ...uc, ...attrs } : uc)),
     }))
   }
 
@@ -223,6 +504,7 @@ export default function Dashboard() {
       alert('更新に失敗しました')
     }
   }
+
   async function dec(uc) {
     if (!week.editable) return
     const nextVal = Math.max(0, (uc.exec_count || 0) - 1)
@@ -246,12 +528,12 @@ export default function Dashboard() {
       <RedirectInfoModal
         open={redirectModal.open}
         mode={redirectModal.mode}
+        variant={redirectModal.variant}
+        questionCount={redirectModal.questionCount}
         onConfirm={handleRedirectConfirm}
       />
 
-      <h1 className="text-2xl font-bold text-center">
-        チャレンジ{week.week_no}週目
-      </h1>
+      <h1 className="text-2xl font-bold text-center">チャレンジ{week.week_no}週目</h1>
 
       <div className="mt-4 text-center">
         <p className="font-semibold">今週のチャレンジ：{doneCount}/{totalSlots} 完了！</p>
@@ -287,9 +569,7 @@ export default function Dashboard() {
                   onClick={() => dec(uc)}
                   disabled={!week.editable}
                   aria-label="回数を減らす"
-                  className="w-9 h-9 rounded-full border-2 border-[#2B3541] bg-white
-                             flex items-center justify-center text-xl
-                             disabled:opacity-50"
+                  className="w-9 h-9 rounded-full border-2 border-[#2B3541] bg-white flex items-center justify-center text-xl disabled:opacity-50"
                 >
                   –
                 </button>
@@ -304,16 +584,12 @@ export default function Dashboard() {
                   onClick={() => inc(uc)}
                   disabled={!week.editable}
                   aria-label="回数を増やす"
-                  className="w-9 h-9 rounded-full border-2 border-[#2B3541] bg-white
-                             flex items-center justify-center text-xl
-                             disabled:opacity-50"
+                  className="w-9 h-9 rounded-full border-2 border-[#2B3541] bg-white flex items-center justify-center text-xl disabled:opacity-50"
                 >
                   +
                 </button>
 
-                {/* 回数バッジ */}
-                <div className="w-9 h-9 rounded-full border-2 border-[#2B3541] bg-white
-                                flex items-center justify-center text-sm font-semibold">
+                <div className="w-9 h-9 rounded-full border-2 border-[#2B3541] bg-white flex items-center justify-center text-sm font-semibold">
                   {uc.exec_count ?? 0}
                 </div>
               </li>
