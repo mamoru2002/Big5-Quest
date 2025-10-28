@@ -6,6 +6,7 @@ import {
   submitAnswers,
   completeDiagnosis,
 } from '../api';
+import { isGuestSession } from '../lib/api';
 import Progress from '../components/Progress';
 import Button from '../components/ui/Button';
 import Layout from '../components/Layout';
@@ -21,8 +22,10 @@ export default function DiagnosisForm() {
   const [error,     setError]     = useState(null);
   const navigate = useNavigate();
   const [search] = useSearchParams();
-  const formName      = search.get('form') || 'guest_10';
+  const searchForm = search.get('form');
   const resultIdParam = search.get('result_id');
+  const fallbackForm = isGuestSession() ? 'guest_10' : 'full_50';
+  const formName = searchForm || fallbackForm;
 
   useEffect(() => {
     (async () => {

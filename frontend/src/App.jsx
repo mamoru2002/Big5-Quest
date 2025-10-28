@@ -7,6 +7,7 @@ import ResultPage from './pages/ResultPage'
 import ChallengeSelection from './pages/ChallengeSelection'
 import Dashboard from './pages/Dashboard'
 import MyPage from './pages/MyPage'
+import Rest from './pages/Rest'
 
 import SignIn from './pages/auth/SignIn'
 import SignUp from './pages/auth/SignUp'
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/result/:id" element={<ResultPage />} />
           <Route path="/select/:id/:code" element={<ChallengeSelection />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/rest" element={<Rest />} />
           <Route path="/mypage" element={<MyPage />} />
         </Route>
 
