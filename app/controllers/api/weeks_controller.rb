@@ -30,12 +30,23 @@ module Api
                           .where(weekly_progress: weekly)
                           .order(created_at: :asc)
 
-      @result_id = current_user.diagnosis_results
-                               .where(weekly_progress: weekly)
-                               .order(created_at: :desc)
-                               .limit(1)
-                               .pluck(:id)
-                               .first
+      latest_result = current_user.diagnosis_results
+                                   .where(weekly_progress: weekly)
+                                   .order(created_at: :desc)
+                                   .limit(1)
+                                   .first
+
+      info = Weekly::ProgramInfo.new(user: current_user, weekly: weekly)
+
+      @result_id         = latest_result&.id
+      @diagnosis_status  = latest_result&.status
+      @paused_this_week  = info.paused_week?
+      @program_week      = info.program_week
+      @is_milestone_26   = info.milestone_week?
+      @milestone_bucket  = info.milestone_bucket
+      @is_final_full50   = info.final_week?
+      @rotation_bucket   = info.rotation_bucket
+      @focus_trait_code  = info.focus_trait_code
     end
   end
 end

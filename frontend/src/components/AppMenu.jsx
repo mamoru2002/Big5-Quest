@@ -21,7 +21,7 @@ export default function AppMenu({ open, onClose }) {
     return () => { window.removeEventListener('keydown', onKey); clearTimeout(id) }
   }, [open, onClose])
 
-  useEffect(() => { if (open) onClose?.() }, [loc.pathname])
+  useEffect(() => { if (open) onClose?.() }, [loc.pathname, open, onClose])
 
   const handleLogout = async () => {
     try { await AuthAPI.logout() } catch (_E) { console.debug(_E) }
@@ -35,7 +35,6 @@ export default function AppMenu({ open, onClose }) {
   const itemsCommon = [
     { to: '/',          label: 'ホーム' },
     { to: '/mypage',    label: 'マイページ' },
-    { to: '/diagnosis', label: '性格診断をはじめる' },
     { to: '/dashboard', label: 'ダッシュボード' },
   ]
   const itemsGuest  = [
