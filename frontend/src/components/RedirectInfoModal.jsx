@@ -6,8 +6,8 @@ const BASE_STYLES = 'fixed inset-0 z-50 flex items-center justify-center'
 export default function RedirectInfoModal({
   open,
   mode = 'diagnosis',
-  variant = 'weekly',
-  questionCount = null,
+  variant = 'weekly',      // 'weekly' | 'milestone' | 'final' | 'rest'
+  questionCount = null,    // number | null
   onConfirm,
 }) {
   if (!open) return null
