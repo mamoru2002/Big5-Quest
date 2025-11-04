@@ -22,7 +22,10 @@ const baseURL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_BASE).replace(/\/+
 const api: AxiosInstance = axios.create({
   baseURL,
   withCredentials: false,
-  headers: { 'Content-Type': 'application/json' }
+  headers: { 'Content-Type': 'application/json' },
+  validateStatus: (status) => {
+    return (status >= 200 && status < 300) || status === 304
+  },
 });
 
 api.interceptors.request.use((config) => {
@@ -87,7 +90,8 @@ api.interceptors.response.use(
 export const DiagnosisAPI = {
   questions(formName: string) {
     if (!formName) throw new Error('formName is required');
-    return api.get(`/diagnosis_forms/${encodeURIComponent(formName)}/questions`).then(r => r.data);
+    return api.get(`/diagnosis_forms/${encodeURIComponent(formName)}/questions`,
+    { headers: { 'Cache-Control': 'no-cache' } }).then(r => r.data);
   },
 
   createResult(diagnosis_form_id: number) {
