@@ -30,7 +30,7 @@ jobs:
           test -n "${{ secrets.DB_PASSWORD }}" || { echo "::error::DB_PASSWORD missing"; exit 1; }
 
       - name: Quick SSH ping
-        uses: appleboy/ssh-action@v1.2.2
+        uses: appleboy/ssh-action@v1.2.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
@@ -45,7 +45,7 @@ jobs:
             uname -a
 
       - name: SSH deploy
-        uses: appleboy/ssh-action@v1.2.2
+        uses: appleboy/ssh-action@v1.2.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
