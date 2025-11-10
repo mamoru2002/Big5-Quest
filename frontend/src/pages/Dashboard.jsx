@@ -373,93 +373,97 @@ export default function Dashboard() {
     markScheduledSkip(userId, nextKey, shouldPause)
   }, [week, skipStatus, skipReady, userId])
 
-  useEffect(() => {
-    if (autoHandled) return
-    if (!week || !userReady || !skipReady || !diagnosisReady) return
+useEffect(() => {
+  if (autoHandled) return
+  if (!week || !userReady || !skipReady || !diagnosisReady) return
+  if (!formReady) return
 
-    if (skipFailed) {
-      console.info('skip status unavailable; auto-redirect skipped')
-      setAutoHandled(true)
-      return
-    }
-    if (!userId) {
-      console.info('user id unavailable; auto-redirect skipped')
-      setAutoHandled(true)
-      return
-    }
+  if (skipFailed) {
+    console.info('skip status unavailable; auto-redirect skipped')
+    setAutoHandled(true)
+    return
+  }
+  if (!userId) {
+    console.info('user id unavailable; auto-redirect skipped')
+    setAutoHandled(true)
+    return
+  }
 
-    const weekKey = buildWeekKey(week.start_at)
-    if (!weekKey) {
-      console.info('week key unavailable; auto-redirect skipped')
-      setAutoHandled(true)
-      return
-    }
+  const weekKey = buildWeekKey(week.start_at)
+  if (!weekKey) {
+    console.info('week key unavailable; auto-redirect skipped')
+    setAutoHandled(true)
+    return
+  }
 
-    const pausedFromWeek = typeof week.paused === 'boolean' ? week.paused : null
-    const isPaused = pausedFromWeek ?? isWeekScheduledToSkip(userId, weekKey)
-    const alreadyRedirected = hasRedirectedForWeek(userId, weekKey)
+  const pausedFromWeek = typeof week.paused === 'boolean' ? week.paused : null
+  const isPaused = pausedFromWeek ?? isWeekScheduledToSkip(userId, weekKey)
+  const alreadyRedirected = hasRedirectedForWeek(userId, weekKey)
+  const shouldPromptNextWeek = Boolean(skipStatus?.next_week_paused)
 
-    let diagnosisTarget = '/diagnosis'
-    if (!isPaused) {
-      const resolvedFormName = formChoice?.formName || 'full_50'
-      const params = new URLSearchParams()
-      if (resolvedFormName) params.set('form', resolvedFormName)
-      if (week.result_id) params.set('result_id', week.result_id)
-      const qs = params.toString()
-      diagnosisTarget = `/diagnosis${qs ? `?${qs}` : ''}`
-    }
-    const questionCount = Array.isArray(formChoice?.questionUuids) ? formChoice.questionUuids.length : null
-    const variant = isFinalWeek ? 'final' : isMilestoneWeek ? 'milestone' : 'weekly'
+  let diagnosisTarget = '/diagnosis'
+  if (!isPaused) {
+    const resolvedFormName = formChoice?.formName || 'full_50'
+    const params = new URLSearchParams()
+    if (resolvedFormName) params.set('form', resolvedFormName)
+    if (week.result_id) params.set('result_id', week.result_id)
+    const qs = params.toString()
+    diagnosisTarget = `/diagnosis${qs ? `?${qs}` : ''}`
+  }
+  const questionCount = Array.isArray(formChoice?.questionUuids) ? formChoice.questionUuids.length : null
+  const variant = isFinalWeek ? 'final' : isMilestoneWeek ? 'milestone' : 'weekly'
 
-    if (isPaused) {
-      if (!alreadyRedirected) {
-        setRedirectModal({
-          open: true,
-          mode: 'rest',
-          target: '/rest',
-          weekKey,
-          variant: 'rest',
-          questionCount: null,
-        })
-      } else {
-        navigate('/rest', { replace: true })
-      }
-      setAutoHandled(true)
-      return
-    }
-
+  if (isPaused) {
     if (!alreadyRedirected) {
       setRedirectModal({
         open: true,
-        mode: 'diagnosis',
-        target: diagnosisTarget,
+        mode: 'rest',
+        target: '/rest',
         weekKey,
-        variant,
-        questionCount,
+        variant: 'rest',
+        questionCount: null,
       })
-      setAutoHandled(true)
-      return
+    } else {
+      navigate('/rest', { replace: true })
     }
-
-    if (diagnosisStatus === 'incomplete') {
-      navigate(diagnosisTarget, { replace: true })
-    }
-
     setAutoHandled(true)
-  }, [
-    autoHandled,
-    week,
-    userReady,
-    skipReady,
-    diagnosisReady,
-    skipFailed,
-    userId,
-    navigate,
-    diagnosisStatus,
-    formChoice,
-    isFinalWeek,
-    isMilestoneWeek,
-  ])
+    return
+  }
+
+  if (shouldPromptNextWeek && !alreadyRedirected) {
+    setRedirectModal({
+      open: true,
+      mode: 'diagnosis',
+      target: diagnosisTarget,
+      weekKey,
+      variant,
+      questionCount,
+    })
+    setAutoHandled(true)
+    return
+  }
+
+  if (diagnosisStatus === 'incomplete') {
+    navigate(diagnosisTarget, { replace: true })
+  }
+
+  setAutoHandled(true)
+}, [
+  autoHandled,
+  week,
+  userReady,
+  skipReady,
+  diagnosisReady,
+  formReady,
+  skipFailed,
+  userId,
+  navigate,
+  diagnosisStatus,
+  formChoice,
+  isFinalWeek,
+  isMilestoneWeek,
+  skipStatus,
+])
 
   const handleRedirectConfirm = () => {
     if (!redirectModal.open) return

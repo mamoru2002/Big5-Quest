@@ -7,11 +7,7 @@ class Api::WeekSkipsController < ApplicationController
 
   def update
     want_skip = ActiveModel::Type::Boolean.new.cast(params[:skip])
-    if want_skip
-      ensure_reserved_once!
-    else
-      cancel_if_possible!
-    end
+    want_skip ? ensure_reserved_once! : cancel_if_possible!
     render json: build_payload
   end
 
@@ -22,30 +18,36 @@ class Api::WeekSkipsController < ApplicationController
   end
 
   def next_week_start
-    Date.current.beginning_of_week + 1.week
+    weekly_anchor_date_for(current_user) + 7.days
   end
 
-  def next_week_progress
-    @next_week_progress ||= begin
-      wp = WeeklyProgress.find_by(user_id: current_user.id, start_at: next_week_start)
-      return wp if wp
-      next_no = (WeeklyProgress.where(user_id: current_user.id).maximum(:week_no) || 0) + 1
-      WeeklyProgress.create!(user_id: current_user.id, week_no: next_no, start_at: next_week_start)
-    end
+  def peek_next_week_progress
+    @peek_next_week_progress ||= current_user.weekly_progresses.find_by(start_at: next_week_start)
+  end
+
+  def resolve_next_week_progress
+    peek_next_week_progress || current_user.weekly_progresses.create!(
+      week_no:  current_user.weekly_progresses.maximum(:week_no).to_i + 1,
+      start_at: next_week_start
+    )
   end
 
   def pause_exists?
-    WeeklyPause.exists?(weekly_progress_id: next_week_progress.id)
+    wp = peek_next_week_progress
+    wp && WeeklyPause.exists?(weekly_progress_id: wp.id)
   end
 
   def ensure_reserved_once!
     return if pause_exists?
-    WeeklyPause.create!(weekly_progress_id: next_week_progress.id)
+    wp = resolve_next_week_progress
+    WeeklyPause.find_or_create_by!(weekly_progress_id: wp.id)
   end
 
   def cancel_if_possible!
-    if (pause = WeeklyPause.find_by(weekly_progress_id: next_week_progress.id))
-      pause.destroy
+    wp = peek_next_week_progress
+    return unless wp
+    if (pause = WeeklyPause.find_by(weekly_progress_id: wp.id))
+      pause.destroy!
     end
   end
 
@@ -63,12 +65,10 @@ class Api::WeekSkipsController < ApplicationController
   end
 
   def total_used_skips
-    WeeklyPause.joins(:weekly_progress)
-               .where(weekly_progresses: { user_id: current_user.id })
-               .count
+    WeeklyPause.joins(:weekly_progress).where(weekly_progresses: { user_id: current_user.id }).count
   end
 
   def remaining_skips
-    [max_skips - total_used_skips, 0].max
+    [ max_skips - total_used_skips, 0 ].max
   end
 end
