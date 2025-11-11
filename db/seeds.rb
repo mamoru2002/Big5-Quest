@@ -28,9 +28,6 @@ questions_data.each do |q|
   end
 end
 
-# ───────────────────────────────────────────
-# フォーム登録ヘルパー
-# ───────────────────────────────────────────
 def seed_form(name, uuids)
   form = DiagnosisForm.find_or_create_by!(name: name)
   puts "  ✔️ Form: #{form.name} (id=#{form.id})"
@@ -47,7 +44,6 @@ def seed_form(name, uuids)
   end
 end
 
-# ネストされた forms_map を平坦化するメソッド
 def flatten_forms_map(data, prefix)
   case data
   when Array
@@ -90,4 +86,21 @@ Dir.glob(Rails.root.join('db/seeds/challenges_*.json')).sort.each do |path|
     ch.save!
     puts "Challenge(#{code}) #{idx + 1}/#{items.size}: #{ch.title} (diff=#{ch.difficulty})"
   end
+end
+puts 'Seeding emotion_tags ...'
+
+EMOTION_TAGS = [
+  [ 'achieved',    '達成感' ],
+  [ 'fun',         '楽しい' ],
+  [ 'insight',     '気づき' ],
+  [ 'keep_going',  '続けたい' ],
+  [ 'nervous',     '緊張' ],
+  [ 'tired',       '疲れ' ]
+]
+
+EMOTION_TAGS.each_with_index do |(en, ja), i|
+  tag = EmotionTag.find_or_initialize_by(name_en: en)
+  tag.name_ja = ja
+  tag.save!
+  puts "  ✔️ EmotionTag #{i + 1}: #{ja} / #{en} (id=#{tag.id})"
 end
