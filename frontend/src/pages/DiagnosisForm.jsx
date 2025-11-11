@@ -22,6 +22,7 @@ export default function DiagnosisForm() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [weekNo, setWeekNo] = useState(null);
+  const [pending, setPending] = useState(0);
   const navigate = useNavigate();
   const [search] = useSearchParams();
   const searchForm = search.get('form');
@@ -59,7 +60,9 @@ export default function DiagnosisForm() {
       }
       if (active) setLoading(false);
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [formName, resultIdParam]);
 
   useEffect(() => {
@@ -74,7 +77,9 @@ export default function DiagnosisForm() {
         setWeekNo(null);
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (loading) return <p className="text-center p-4">読み込み中…</p>;
@@ -84,6 +89,8 @@ export default function DiagnosisForm() {
   const end = Math.min(start + PAGE_SIZE, total);
   const visible = questions.slice(start, end);
   const answeredCount = Object.keys(answers).length;
+  const isComplete = total > 0 && questions.every(q => answers[q.question_uuid] != null);
+  const canFinish = isComplete && pending === 0;
   const btnBase =
     'flex-shrink-0 w-12 h-12 rounded-full border-2 border-[#2B3541] cursor-pointer transition-colors duration-200';
   const title =
@@ -100,7 +107,10 @@ export default function DiagnosisForm() {
           question_uuid: q.question_uuid,
           value: next[q.question_uuid],
         }));
-        submitAnswers(resultId, payload).catch(() => {});
+        setPending(p => p + 1);
+        submitAnswers(resultId, payload)
+          .catch(() => {})
+          .finally(() => setPending(p => p - 1));
         if (end < total) {
           setStart(end);
           setTimeout(() => {
@@ -132,9 +142,7 @@ export default function DiagnosisForm() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
             <div className="w-[100px] h-[100px] bg-[#CDEDEC] rounded-full" />
           </div>
-          <h1 className="relative text-2xl font-bold text-center">
-            {title}
-          </h1>
+          <h1 className="relative text-2xl font-bold text-center">{title}</h1>
         </div>
       )}
 
@@ -170,23 +178,23 @@ export default function DiagnosisForm() {
 
       <div className="flex justify-start mt-6">
         {start > 0 && (
-          <Button
-            onClick={handlePrev}
-            className="border-[#2B3541] bg-white text-[#2B3541]"
-          >
+          <Button onClick={handlePrev} className="border-[#2B3541] bg-white text-[#2B3541]">
             前の5問へ
           </Button>
         )}
       </div>
 
-      <div className="flex justify-center mt-8">
-        <Button
-          onClick={handleFinish}
-          className="bg-[#00A8A5] text-white hover:bg-[#01908d] !rounded-full border-[#00A8A5]"
-        >
-          結果を見る
-        </Button>
-      </div>
+      {isComplete && (
+        <div className="flex justify-center mt-8">
+          <Button
+            onClick={handleFinish}
+            disabled={!canFinish}
+            className="bg-[#00A8A5] text-white hover:bg-[#01908d] !rounded-full border-[#00A8A5]"
+          >
+            結果を見る
+          </Button>
+        </div>
+      )}
     </Layout>
   );
 }
