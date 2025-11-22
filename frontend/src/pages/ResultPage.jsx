@@ -103,7 +103,7 @@ export default function ResultPage() {
           あなたの性格の傾向を表しています。
         </p>
 
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="flex flex-col gap-3">
           {TRAIT_SUMMARIES.map(trait => (
             <div
               key={trait.code}
