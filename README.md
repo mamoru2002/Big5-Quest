@@ -88,3 +88,5 @@ Big5-Quest は、「性格は小さな行動の積み重ねで変化しうる」
 - Hudson, N. W., Briley, D. A., Chopik, W. J., & Derringer, J. (2018).
   *You have to follow through: Attaining behavioral change goals predicts volitional personality change.*
   Journal of Personality and Social Psychology, 114(4), 640–663.
+
+なお、本アプリでの個人開発用途での利用については、著者本人からあらかじめ了承を得ています。
