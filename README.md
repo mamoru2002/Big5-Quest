@@ -80,3 +80,11 @@ Big5の各特性に対して、診断と「週間チャレンジ」を組み合�
   - 特性差分グラフ（初回診断基準の週次変化）
   - 来週スキップ（トグルで予約と解除）
   - プロフィール編集（名前/自己紹介）
+ 
+## 背景
+
+Big5-Quest は、「性格は小さな行動の積み重ねで変化しうる」という研究結果をもとに設計しています。
+
+- Hudson, N. W., Briley, D. A., Chopik, W. J., & Derringer, J. (2018).
+  *You have to follow through: Attaining behavioral change goals predicts volitional personality change.*
+  Journal of Personality and Social Psychology, 114(4), 640–663.
