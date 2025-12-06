@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# 各ユーザーの週次進行状況から「何週目か」「マイルストーンか」「A/B/Cローテーションか」を判定する
 module Weekly
   class ProgramInfo
     TOTAL_WEEKS = 15
@@ -63,7 +64,7 @@ module Weekly
     def prior_active_week_count
       @prior_active_week_count ||= begin
         previous_weeks = user.weekly_progresses
-                              .where('week_no < ?', weekly.week_no)
+                              .where("week_no < ?", weekly.week_no)
                               .includes(:weekly_pauses)
 
         previous_weeks.count do |wp|
@@ -80,17 +81,17 @@ module Weekly
     def latest_challenge_trait_code
       user.user_challenges
           .joins(challenge: :trait)
-          .order('user_challenges.created_at DESC')
+          .order("user_challenges.created_at DESC")
           .limit(1)
-          .pluck('traits.code')
+          .pluck("traits.code")
           .first
     end
 
     def latest_diagnosis_trait_code
       names = user.diagnosis_results
                   .joins(:diagnosis_form)
-                  .order('diagnosis_results.created_at DESC')
-                  .pluck('diagnosis_forms.name')
+                  .order("diagnosis_results.created_at DESC")
+                  .pluck("diagnosis_forms.name")
 
       names.each do |name|
         trait = extract_trait_from_form_name(name)
