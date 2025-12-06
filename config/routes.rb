@@ -46,6 +46,7 @@ Rails.application.routes.draw do
 
     get  "stats/summary",       to: "stats#summary"
     get  "stats/trait_history", to: "stats#trait_history"
+    get  "stats/challenge_history", to: "stats#challenge_history"
 
     get   "week_skips/status", to: "week_skips#status"
     patch "week_skips",        to: "week_skips#update"
