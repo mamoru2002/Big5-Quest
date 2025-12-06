@@ -26,7 +26,7 @@ module Api
     def trait_history
       code = params[:code].to_s.upcase
       trait = Trait.find_by(code: code)
-      return render json: { error: 'invalid_trait' }, status: :bad_request unless trait
+      return render json: { error: "invalid_trait" }, status: :bad_request unless trait
 
       uid = current_user.id
 
@@ -35,7 +35,7 @@ module Api
                .joins(responses: :question)
                .where(user_id: uid)
                .where(questions: { trait_id: trait.id })
-               .group('weekly_progresses.week_no')
+               .group("weekly_progresses.week_no")
                .select(<<~SQL.squish)
                  weekly_progresses.week_no AS week_no,
                  SUM(
@@ -45,7 +45,7 @@ module Api
                    END
                  ) AS trait_score
                SQL
-               .order('weekly_progresses.week_no ASC')
+               .order("weekly_progresses.week_no ASC")
 
       points = rows.map { |r| { week: r.week_no.to_i, score: r.trait_score.to_i } }
       base = points.first&.[](:score)
@@ -56,6 +56,39 @@ module Api
       end
 
       render json: { points: points }
+    end
+
+
+    def challenge_history
+      uid = current_user.id
+
+      user_challenges = UserChallenge
+                          .includes({ challenge: :trait },
+                                    { emotion_tags_user_challenges: :emotion_tag },
+                                    :user_challenge_comment)
+                          .where(user_id: uid)
+                          .where("exec_count > 0 OR first_done_at IS NOT NULL")
+                          .order(first_done_at: :desc, created_at: :desc)
+                          .limit(50)
+
+      items = user_challenges.map do |uc|
+        {
+          id: uc.id,
+          title: uc.challenge.title,
+          exec_count: uc.exec_count,
+          first_done_at: uc.first_done_at,
+          trait_code: uc.challenge.trait.code,
+          trait_name_ja: uc.challenge.trait.name_ja,
+          tags: uc.emotion_tags_user_challenges.map { |link|
+            tag = link.emotion_tag
+            next unless tag
+            { id: tag.id, name: tag.name_ja }
+          }.compact,
+          comment: uc.user_challenge_comment&.comment
+        }
+      end
+
+      render json: { items: items }
     end
 
     private
