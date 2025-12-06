@@ -60,10 +60,29 @@ const TRAITS = [
   }
 ]
 
+const TRAIT_LABEL = {
+  N: '情緒安定性',
+  E: '外向性',
+  C: '誠実性',
+}
+
+function getFocusCode() {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const v = window.localStorage.getItem('focus_trait_code')
+      return v || null
+    }
+  } catch (e) {
+    console.debug('localStorage error', e)
+  }
+  return null
+}
+
 export default function ResultPage() {
   const { id } = useParams()
   const { state } = useLocation()
   const nav = useNavigate()
+  const focusTraitCode = getFocusCode() 
 
   const scores = useMemo(() => state?.scores || {}, [state?.scores])
 
@@ -128,65 +147,82 @@ export default function ResultPage() {
         </div>
       </div>
 
-      <h1 className="text-2xl font-bold text-center mb-4">伸ばしたい特性を選びましょう</h1>
+{!focusTraitCode ? (
+        <>
+          <h1 className="text-2xl font-bold text-center mb-4">
+            伸ばしたい特性を選びましょう
+          </h1>
 
-      <p className="text-sm text-[#2B3541]/70 leading-relaxed mb-4">
-        自分が「こうなりたい」と思う特性を選ぶのが一番のおすすめです。
-      </p>
+          <p className="text-sm text-[#2B3541]/70 leading-relaxed mb-4">
+            自分が「こうなりたい」と思う特性を選ぶのが一番のおすすめです。
+          </p>
 
-      <div className="flex flex-col gap-3">
-        {TRAITS.map(t => (
-          <Button
-            key={t.code}
-            className="w-full bg-[#00A8A5] text-[#F9FAFB] border-[#2B3541]"
-            onClick={() => nav(`/select/${id}/${t.code}`)}
-          >
-            <div className="text-center">
-              <div className="text-xl font-semibold">{t.label}</div>
-              <div className="text-sm mt-1 opacity-90 leading-relaxed">
-                {t.desc.split('。').map((chunk, i, arr) =>
-                  chunk ? (
-                    <span key={i}>
-                      {chunk}。
-                      {i < arr.length - 1 && <br />}
-                    </span>
-                  ) : null
-                )}
+          <div className="flex flex-col gap-3">
+            {TRAITS.map(t => (
+              <Button
+                key={t.code}
+                className="w-full bg-[#00A8A5] text-[#F9FAFB] border-[#2B3541]"
+                onClick={() => nav(`/select/${id}/${t.code}`)}
+              >
+                <div className="text-center">
+                  <div className="text-xl font-semibold">{t.label}</div>
+                  <div className="text-sm mt-1 opacity-90 leading-relaxed">
+                    {t.desc.split('。').map((chunk, i, arr) =>
+                      chunk ? (
+                        <span key={i}>
+                          {chunk}。
+                          {i < arr.length - 1 && <br />}
+                        </span>
+                      ) : null
+                    )}
+                  </div>
+                </div>
+              </Button>
+            ))}
+          </div>
+
+          <hr className="border-t border-[#2B3541]/30 my-6" />
+
+          <div className="text-center mb-3">
+            <div className="text-sm text-[#2B3541] mb-1">もし迷ったら？</div>
+            {recommended && (
+              <div className="text-[#2B3541] text-base">
+                あなたは
+                <span className="font-semibold">
+                  {traitByCode(recommended.code)?.label}
+                </span>
+                を伸ばすのがおすすめ！
               </div>
-            </div>
-          </Button>
-        ))}
-      </div>
-
-      <hr className="border-t border-[#2B3541]/30 my-6" />
-
-      <div className="text-center mb-3">
-        <div className="text-sm text-[#2B3541] mb-1">もし迷ったら？</div>
-        {recommended && (
-          <div className="text-[#2B3541] text-base">
-            あなたは
-            <span className="font-semibold">
-              {traitByCode(recommended.code)?.label}
-            </span>
-            を伸ばすのがおすすめ！
+            )}
           </div>
-        )}
-      </div>
 
-      {recommended && (
-        <Button
-          className="w-full bg-[#00A8A5] text-white border-[#2B3541]"
-          onClick={() => nav(`/select/${id}/${recommended.code}`)}
-        >
-          <div className="text-center">
-            <div className="text-xl font-semibold">
-              {traitByCode(recommended.code)?.label}
-            </div>
-            <div className="text-sm mt-1 opacity-90 leading-relaxed">
-              {traitByCode(recommended.code)?.desc}
-            </div>
+          {recommended && (
+            <Button
+              className="w-full bg-[#00A8A5] text-white border-[#2B3541]"
+              onClick={() => nav(`/select/${id}/${recommended.code}`)}
+            >
+              <div className="text-center">
+                <div className="text-xl font-semibold">
+                  {traitByCode(recommended.code)?.label}
+                </div>
+                <div className="text-sm mt-1 opacity-90 leading-relaxed">
+                  {traitByCode(recommended.code)?.desc}
+                </div>
+              </div>
+            </Button>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="mt-8 mb-6 flex justify-center">
+            <Button
+              className="w-full bg-[#00A8A5] text-[#F9FAFB] border-[#2B3541]"
+              onClick={() => nav(`/select/${id}/${focusTraitCode}`)}
+            >
+              今週の{TRAIT_LABEL[focusTraitCode] || '特性'}チャレンジを選ぶ
+            </Button>
           </div>
-        </Button>
+        </>
       )}
     </Layout>
   )
