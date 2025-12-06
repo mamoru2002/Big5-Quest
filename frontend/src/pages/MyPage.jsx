@@ -8,11 +8,18 @@ import {
   fetchTraitHistory,
   fetchWeekSkipStatus,
   updateWeekSkip,
+  fetchChallengeHistory,
 } from '../api';
 import { fetchProfile, saveProfile } from '../api/profile';
 
 const COLORS = { teal: '#00A8A5', ink: '#2B3541', mint: '#CDEDEC', bg: '#F9FAFB' };
 const FOCUS_KEY = 'focus_trait_code';
+
+const TRAIT_LABEL = {
+  N: '情緒安定性',
+  E: '外向性',
+  C: '誠実性',
+};
 
 function getFocusCode() {
   try {
@@ -42,6 +49,7 @@ export default function MyPage() {
 
   const [traitCode, setTraitCode] = useState(null);
   const [points, setPoints] = useState([]);
+  const [challengeHistory, setChallengeHistory] = useState([]);
 
   const displayName = useMemo(() => {
     const n = profile?.name?.trim();
@@ -99,6 +107,19 @@ export default function MyPage() {
       }
     })();
   }, [traitCode]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetchChallengeHistory();
+        const items = Array.isArray(res?.items) ? res.items : [];
+        setChallengeHistory(items);
+      } catch (e) {
+        console.error(e);
+        setChallengeHistory([]);
+      }
+    })();
+  }, []);
 
   const onToggleSkip = async (vOrBool) => {
     if (skipPending) return;
@@ -219,7 +240,11 @@ export default function MyPage() {
         </section>
 
         <section className="mt-6">
-          <h2 className="text-center text-[20px]">特性の変化</h2>
+            <h2 className="text-center text-[20px]">
+              {traitCode && TRAIT_LABEL[traitCode]
+                ? `${TRAIT_LABEL[traitCode]}の変化`
+                : '特性の変化'}
+            </h2>
           <div className="mt-2 mx-auto w-full bg-white rounded-[5px] border-[2px] border-[#2B3541] px-3 py-3">
             {traitCode ? (
               <TraitDeltaChart points={points} />
@@ -230,6 +255,58 @@ export default function MyPage() {
           <p className="mt-3 text-[16px]">
             差分グラフは、最初の週（W0）を基準に、その後の各週でスコアがどれだけ変化したかを視覚化したものです。+2以上の上昇があれば「かなり変化した」と言える目安になります。
           </p>
+        </section>
+
+        <section className="mt-6">
+          <h2 className="text-[20px] text-center">これまでのチャレンジ</h2>
+
+          <div className="mt-3 mx-auto w-full max-w-[700px] bg-white rounded-[10px] border-[2px] border-[#2B3541] px-4 py-4">
+            {challengeHistory.length === 0 ? (
+              <p className="text-center text-sm text-gray-500">
+                まだ実行済みのチャレンジはありません。
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {challengeHistory.map((item) => (
+                  <li
+                    key={item.id}
+                    className="border border-[#CDEDEC] rounded-[8px] px-3 py-2 bg-[#F9FAFB]"
+                  >
+                    <div className="text-sm font-semibold">
+                      {item.title}
+                    </div>
+
+                    {item.first_done_at && (
+                      <div className="mt-1 text-xs text-gray-500">
+                        初回達成日:{' '}
+                        {new Date(item.first_done_at).toLocaleDateString('ja-JP')}
+                        {' '} / 実行 {item.exec_count} 回
+                      </div>
+                    )}
+
+                    {item.tags && item.tags.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1 text-xs">
+                        {item.tags.map((tag) => (
+                          <span
+                            key={tag.id}
+                            className="px-2 py-[2px] rounded-full bg-[#CDEDEC] text-[#2B3541]"
+                          >
+                            {tag.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {item.comment && (
+                      <p className="mt-2 text-sm whitespace-pre-wrap">
+                        {item.comment}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </section>
 
         <section className="mt-6">
