@@ -96,6 +96,12 @@ export async function fetchTraitHistory(code = 'C') {
   return data;
 }
 
+/** 実行済みチャレンジ履歴 */
+export async function fetchChallengeHistory() {
+  const { data } = await api.get('/stats/challenge_history');
+  return data; // { items: [...] } を期待
+}
+
 /** 来週スキップの現在ステータス */
 export async function fetchWeekSkipStatus() {
   const { data } = await api.get('/week_skips/status');

@@ -8,7 +8,7 @@ import {
   fetchTraitHistory,
   fetchWeekSkipStatus,
   updateWeekSkip,
-} from '../api/stats';
+} from '../api';
 import { fetchProfile, saveProfile } from '../api/profile';
 
 const COLORS = { teal: '#00A8A5', ink: '#2B3541', mint: '#CDEDEC', bg: '#F9FAFB' };
