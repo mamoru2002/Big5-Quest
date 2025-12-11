@@ -13,11 +13,13 @@ class DiagnosisResult < ApplicationRecord
   validates :user_id, uniqueness: { scope: :weekly_progress_id }
 
   def scores_by_trait
-        self.responses.includes(question: :trait)
-            .group_by { |r| r.question.trait.code }
-            .transform_values do |rs|
-              vals = rs.map { |r| r.question.reverse_scored ? (6 - r.value) : r.value }
-              (vals.sum.to_f / vals.size).round(2)
+    responses.includes(question: :trait)
+            .group_by { |response| response.question.trait.code }
+            .transform_values do |responses|
+              scores = responses.map do |response|
+                response.question.reverse_scored ? (6 - response.value) : response.value
+              end
+              (scores.sum.to_f / scores.size).round(2)
             end
   end
 end

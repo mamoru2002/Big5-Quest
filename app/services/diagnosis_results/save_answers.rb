@@ -8,34 +8,39 @@ class DiagnosisResults::SaveAnswers
     new(result, answers).call
   end
 
-  def initialize(result, answers)
-    @result  = result
-    @answers = answers
+  def initialize(diagnosis_result, raw_answers)
+    @diagnosis_result = diagnosis_result
+    @raw_answers      = raw_answers
   end
 
   def call
     validate_payload!
-    latest     = dedupe_answers(@answers_normalized)
-    uuid_to_id = resolve_question_ids(latest.keys)
 
-    saved = 0
+    latest_answers_by_uuid = dedupe_answers(@normalized_answers)
+    uuid_to_question_id    = resolve_question_ids(latest_answers_by_uuid.keys)
+
+    saved_count = 0
+
     ActiveRecord::Base.transaction do
-      latest.each do |uuid, value|
-        question_id = uuid_to_id.fetch(uuid)
-        rec = Response.find_or_initialize_by(
-          diagnosis_result_id: @result.id,
+      latest_answers_by_uuid.each do |question_uuid, answer_value|
+        question_id = uuid_to_question_id.fetch(question_uuid)
+
+        response_record = Response.find_or_initialize_by(
+          diagnosis_result_id: @diagnosis_result.id,
           question_id:         question_id
         )
-        rec.value = value
-        rec.save!
-        saved += 1
+
+        response_record.value = answer_value
+        response_record.save!
+        saved_count += 1
       end
     end
-    saved
+
+    saved_count
 
   rescue ActiveRecord::RecordInvalid => e
-    msg = e.record&.errors&.full_messages&.join(", ") || e.message
-    raise ValidationFailed, msg
+    message = e.record&.errors&.full_messages&.join(", ") || e.message
+    raise ValidationFailed, message
   rescue KeyError => e
     raise UnknownQuestionUuid, e.message
   end
@@ -43,62 +48,73 @@ class DiagnosisResults::SaveAnswers
   private
 
   def validate_payload!
-    unless @answers.is_a?(Array)
+    unless @raw_answers.is_a?(Array)
       raise ValidationFailed, "responses must be an array"
     end
 
-    normalized = []
-    @answers.each_with_index do |elem, idx|
-      h =
-        if elem.respond_to?(:to_unsafe_h)
-          elem.to_unsafe_h
-        elsif elem.respond_to?(:to_h)
-          elem.to_h
+    normalized_answers = []
+
+    @raw_answers.each_with_index do |answer_param, index|
+      answer_hash =
+        if answer_param.respond_to?(:to_unsafe_h)
+          answer_param.to_unsafe_h
+        elsif answer_param.respond_to?(:to_h)
+          answer_param.to_h
         else
           nil
         end
 
-      unless h.is_a?(Hash)
-        raise ValidationFailed, "responses[#{idx}] must be a hash"
+      unless answer_hash.is_a?(Hash)
+        raise ValidationFailed, "responses[#{index}] must be a hash"
       end
 
-      uuid = h[:question_uuid] || h["question_uuid"]
-      raw  = h[:value]         || h["value"]
+      question_uuid = answer_hash[:question_uuid] || answer_hash["question_uuid"]
+      raw_value     = answer_hash[:value]         || answer_hash["value"]
 
-      if uuid.nil? || uuid.to_s.strip.empty?
-        raise ValidationFailed, "responses[#{idx}].question_uuid is missing"
+      if question_uuid.nil? || question_uuid.to_s.strip.empty?
+        raise ValidationFailed, "responses[#{index}].question_uuid is missing"
       end
 
-      int_value = begin
-        Integer(raw)
+      answer_value = begin
+        Integer(raw_value)
       rescue StandardError
         nil
       end
-      unless int_value
-        raise ValidationFailed, "responses[#{idx}].value must be integer"
+
+      unless answer_value
+        raise ValidationFailed, "responses[#{index}].value must be integer"
       end
 
-      normalized << { question_uuid: uuid.to_s, value: int_value }
+      normalized_answers << {
+        question_uuid: question_uuid.to_s,
+        value:         answer_value
+      }
     end
 
-    @answers_normalized = normalized
+    @normalized_answers = normalized_answers
   end
 
-  def dedupe_answers(arr)
-    seen = {}
-    arr.reverse_each do |h|
-      uuid = h[:question_uuid]
-      seen[uuid] ||= h[:value]
+  def dedupe_answers(answer_hashes)
+    latest_answers_by_uuid = {}
+
+    answer_hashes.reverse_each do |answer|
+      uuid = answer[:question_uuid]
+      latest_answers_by_uuid[uuid] ||= answer[:value]
     end
-    seen
+
+    latest_answers_by_uuid
   end
 
-  def resolve_question_ids(uuids)
-    map = Question.where(uuid: uuids).pluck(:uuid, :id).to_h
-    unknown = uuids - map.keys
-    if unknown.any?
-      raise UnknownQuestionUuid, "unknown uuids: #{unknown.join(', ')}"
+  def resolve_question_ids(question_uuids)
+    uuid_to_question_id = Question.where(uuid: question_uuids)
+                                  .pluck(:uuid, :id)
+                                  .to_h
+
+    unknown_uuids = question_uuids - uuid_to_question_id.keys
+    if unknown_uuids.any?
+      raise UnknownQuestionUuid, "unknown uuids: #{unknown_uuids.join(', ')}"
     end
-    map
+
+    uuid_to_question_id
   end
 end
