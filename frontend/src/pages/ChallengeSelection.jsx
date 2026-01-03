@@ -47,7 +47,7 @@ export default function ChallengeSelection() {
   async function handleConfirm() {
     try {
       const ids = Array.from(selectedIds)
-      await createUserChallenges(id, ids)
+      await createUserChallenges(id, ids, code)
       try {
         localStorage.setItem('focus_trait_code', code)
       } catch (err) {

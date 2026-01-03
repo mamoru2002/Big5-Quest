@@ -7,12 +7,20 @@ module Api
     end
 
     def create
-      pms    = params.require(:diagnosis_result).permit(:form_name)
-      form   = DiagnosisForm.find_by!(name: pms[:form_name])
       weekly = resolve_current_week_for(current_user)
 
+      requested_form_name = params.dig(:diagnosis_result, :form_name)
+      form_name =
+        if requested_form_name.present?
+          requested_form_name
+        else
+          DiagnosisResults::FormSelector.call(user: current_user, weekly: weekly)
+        end
+
+      form = DiagnosisForm.find_by!(name: form_name)
+
       result = DiagnosisResult.find_or_initialize_by(
-        user:            current_user,
+        user: current_user,
         weekly_progress: weekly
       ) do |r|
         r.diagnosis_form = form
@@ -24,10 +32,13 @@ module Api
         DiagnosisStart.create!(diagnosis_result: result)
       end
 
-      render json: { id: result.id }, status: :created
+      render json: { id: result.id, form_name: form.name }, status: :created
+    rescue ArgumentError => e
+      render json: { error: e.message }, status: :unprocessable_entity
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => e
       render json: { error: e.message }, status: :unprocessable_entity
     end
+
 
     def responses
       result  = current_user.diagnosis_results.find(params[:id])

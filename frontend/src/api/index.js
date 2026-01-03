@@ -6,12 +6,17 @@ export async function fetchQuestions(formName) {
   return data;
 }
 
-/** 診断開始（結果IDを返す） */
+/** 診断開始（結果IDとフォーム名を返す） */
 export async function startDiagnosis(formName) {
-  const { data } = await api.post('/diagnosis_results', {
-    diagnosis_result: { form_name: formName },
-  });
-  return data.id;
+  const payload =
+    formName
+      ? { diagnosis_result: { form_name: formName } } // ゲスト等で form 指定したい時だけ
+      : {}; // 通常はサーバに決めさせる
+
+  const { data } = await api.post('/diagnosis_results', payload);
+
+  // サーバが { id, form_name } を返す前提
+  return { id: data.id, formName: data.form_name };
 }
 
 /** 回答送信 */
@@ -44,10 +49,11 @@ export async function fetchChallengesByTrait(code) {
 export const fetchChallenges = fetchChallengesByTrait;
 
 /** ユーザーのチャレンジ確定 */
-export async function createUserChallenges(diagnosisResultId, challengeIds) {
+export async function createUserChallenges(diagnosisResultId, challengeIds, focusTraitCode) {
   await api.post('/user_challenges', {
     diagnosis_result_id: diagnosisResultId,
     challenge_ids: challengeIds,
+    focus_trait_code: focusTraitCode,
   });
 }
 

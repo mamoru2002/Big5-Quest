@@ -1,7 +1,7 @@
 class UserProgram < ApplicationRecord
   belongs_to :user
 
-  enum status: {
+  enum :status, {
     active: 0,
     completed: 1,
     canceled: 2
