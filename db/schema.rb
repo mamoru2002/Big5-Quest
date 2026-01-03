@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_18_171541) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_12_174916) do
   create_table "challenges", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.bigint "trait_id", null: false
     t.integer "difficulty", limit: 1, null: false
@@ -181,6 +181,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_18_171541) do
     t.index ["user_id"], name: "index_user_profiles_on_user_id", unique: true
   end
 
+  create_table "user_programs", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "focus_trait_code", null: false
+    t.integer "status", default: 0, null: false
+    t.date "start_at", null: false
+    t.date "finished_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_user_programs_on_user_id"
+  end
+
   create_table "user_visits", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "token", limit: 64, null: false
@@ -240,6 +251,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_18_171541) do
   add_foreign_key "user_challenges", "weekly_progresses"
   add_foreign_key "user_credentials", "users", on_delete: :cascade
   add_foreign_key "user_profiles", "users", on_delete: :cascade
+  add_foreign_key "user_programs", "users"
   add_foreign_key "user_visits", "users", on_delete: :cascade
   add_foreign_key "weekly_misses", "weekly_progresses", on_delete: :cascade
   add_foreign_key "weekly_pauses", "weekly_progresses"

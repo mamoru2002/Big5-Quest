@@ -1,42 +1,45 @@
 # frozen_string_literal: true
 
-# 各ユーザーの週次進行状況から「何週目か」「マイルストーンか」「A/B/Cローテーションか」を判定する
 module Weekly
   class ProgramInfo
-    TOTAL_WEEKS = 15
+    TOTAL_WEEKS      = 15
     FINAL_WEEK_INDEX = TOTAL_WEEKS - 1
+
     ROTATION_LETTERS = %w[A B C].freeze
-    MILESTONE_CYCLE = %w[A B].freeze
+    MILESTONE_CYCLE  = %w[A B].freeze
 
     attr_reader :user, :weekly
 
     def initialize(user:, weekly:)
-      @user = user
+      @user   = user
       @weekly = weekly
     end
 
+    # 0-based（1週目=0, 5週目=4, 10週目=9, 15週目=14）
     def program_week
-      (weekly.week_no || 1) - 1
+      return fallback_program_week unless program_start_at
+
+      weeks_since = ((weekly.start_at.to_date - program_start_at).to_i) / 7
+      [ weeks_since, 0 ].max
     end
 
     def final_week?
-      return false unless FINAL_WEEK_INDEX
-
       program_week >= FINAL_WEEK_INDEX
     end
 
+    # 5週目/10週目（= program_week 4 / 9）
     def milestone_week?
-      return false unless program_week.positive?
+      return false if program_week.zero?
       return false if final_week?
 
-      (program_week % 5).zero?
+      ((program_week + 1) % 5).zero?
     end
 
     def milestone_bucket
       return nil unless milestone_week?
 
-      cycle_index = (program_week / 5) - 1
-      MILESTONE_CYCLE[cycle_index % MILESTONE_CYCLE.size]
+      milestone_number = (program_week + 1) / 5 # 5週目=>1, 10週目=>2
+      MILESTONE_CYCLE[(milestone_number - 1) % MILESTONE_CYCLE.size]
     end
 
     def rotation_bucket
@@ -50,30 +53,51 @@ module Weekly
       weekly.weekly_pauses.loaded? ? weekly.weekly_pauses.any? : weekly.weekly_pauses.exists?
     end
 
+    # ★ここが重要：program があるならそれを最優先
     def focus_trait_code
       @focus_trait_code ||= begin
+        from_program = active_program&.focus_trait_code
+        return from_program if from_program.present?
+
         from_challenges = latest_challenge_trait_code
-        return from_challenges if from_challenges
+        return from_challenges if from_challenges.present?
 
         latest_diagnosis_trait_code
-      end&.upcase
+      end&.to_s&.upcase
     end
 
     private
 
+    def active_program
+      @active_program ||= user.active_user_program
+    end
+
+    def program_start_at
+      @program_start_at ||= active_program&.start_at&.to_date
+    end
+
+    def fallback_program_week
+      (weekly.week_no || 1) - 1
+    end
+
+    # 「ローテ対象になった過去週」の数（プログラム開始日基準）
     def prior_active_week_count
       @prior_active_week_count ||= begin
+        return 0 unless program_start_at
+
         previous_weeks = user.weekly_progresses
-                              .where("week_no < ?", weekly.week_no)
-                              .includes(:weekly_pauses)
+                             .where("start_at >= ? AND start_at < ?", program_start_at, weekly.start_at)
+                             .includes(:weekly_pauses)
+                             .order(:start_at)
 
         previous_weeks.count do |wp|
-          previous_program_week = (wp.week_no || 1) - 1
-          paused = wp.weekly_pauses.loaded? ? wp.weekly_pauses.any? : wp.weekly_pauses.exists?
-          final = FINAL_WEEK_INDEX && previous_program_week >= FINAL_WEEK_INDEX
-          milestone = previous_program_week.positive? && (previous_program_week % 5).zero? && !final
+          rel_week = ((wp.start_at.to_date - program_start_at).to_i) / 7
 
-          previous_program_week.positive? && !paused && !milestone && !final
+          paused = wp.weekly_pauses.loaded? ? wp.weekly_pauses.any? : wp.weekly_pauses.exists?
+          final  = rel_week >= FINAL_WEEK_INDEX
+          milestone = rel_week.positive? && !final && ((rel_week + 1) % 5).zero?
+
+          rel_week.positive? && !paused && !milestone && !final
         end
       end
     end

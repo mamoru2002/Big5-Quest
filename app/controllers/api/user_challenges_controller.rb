@@ -32,11 +32,19 @@ module Api
         return render json: { error: "1〜4件選んでください" }, status: :unprocessable_entity
       end
 
-      result = current_user.diagnosis_results.find(params[:diagnosis_result_id])
-      weekly = result.weekly_progress
+      weekly_progress = @weekly
+      program = current_user.active_user_program
+
+      trait =
+        if program
+          program.focus_trait_code
+        else
+          params.require(:focus_trait_code)
+        end
+      UserPrograms::EnsureActive.call(user: current_user, weekly: weekly_progress, focus_trait_code: trait)
 
       existing = current_user.user_challenges
-                             .where(weekly_progress: weekly, challenge_id: ids)
+                             .where(weekly_progress: weekly_progress, challenge_id: ids)
                              .pluck(:challenge_id)
       new_ids = ids.map(&:to_i) - existing
       return head :no_content if new_ids.empty?
@@ -46,7 +54,7 @@ module Api
           UserChallenge.create!(
             user:            current_user,
             challenge_id:    c_id,
-            weekly_progress: weekly,
+            weekly_progress: weekly_progress,
             status:          :unstarted,
             exec_count:      0
           )

@@ -7,7 +7,6 @@ import {
   completeDiagnosis,
   fetchCurrentWeek,
 } from '../api';
-import { isGuestSession } from '../lib/api';
 import Progress from '../components/Progress';
 import Button from '../components/ui/Button';
 import Layout from '../components/Layout';
@@ -23,47 +22,57 @@ export default function DiagnosisForm() {
   const [error, setError] = useState(null);
   const [weekNo, setWeekNo] = useState(null);
   const [pending, setPending] = useState(0);
+
   const navigate = useNavigate();
   const [search] = useSearchParams();
   const searchForm = search.get('form');
   const resultIdParam = search.get('result_id');
-  const fallbackForm = isGuestSession() ? 'guest_10' : 'full_50';
-  const formName = searchForm || fallbackForm;
 
   useEffect(() => {
     let active = true;
+
     (async () => {
+      setLoading(true);
+      setError(null);
+
       try {
-        const data = await fetchQuestions(formName);
+        // ゲスト導線（result_id + form が来る前提）
+        if (resultIdParam) {
+          if (!searchForm) throw new Error('form param is required when result_id is present');
+
+          const rid = Number(resultIdParam);
+          if (!Number.isFinite(rid)) throw new Error('invalid result_id');
+
+          if (!active) return;
+          setResultId(rid);
+
+          const qs = await fetchQuestions(searchForm);
+          if (!active) return;
+          setQuestions(qs);
+          return;
+        }
+
+        // 通常ユーザー：サーバが form_name を決める
+        const started = await startDiagnosis(); // { id, formName }
         if (!active) return;
-        setQuestions(data);
+
+        setResultId(started.id);
+
+        const qs = await fetchQuestions(started.formName);
+        if (!active) return;
+        setQuestions(qs);
       } catch (e) {
         if (!active) return;
-        setError(`質問の取得に失敗しました\nHTTP ${e.response?.status || ''} ${e.message}`);
-        setLoading(false);
-        return;
+        setError(`診断の準備に失敗しました\n${e.message || e}`);
+      } finally {
+        if (active) setLoading(false);
       }
-      try {
-        if (resultIdParam) {
-          if (!active) return;
-          setResultId(Number(resultIdParam));
-        } else {
-          const id = await startDiagnosis(formName);
-          if (!active) return;
-          setResultId(id);
-        }
-      } catch (err) {
-        if (!active) return;
-        setError(`診断開始に失敗しました\nHTTP ${err.response?.status}\n${err.response?.data?.error || err.message}`);
-        setLoading(false);
-        return;
-      }
-      if (active) setLoading(false);
     })();
+
     return () => {
       active = false;
     };
-  }, [formName, resultIdParam]);
+  }, [resultIdParam, searchForm]);
 
   useEffect(() => {
     let active = true;
@@ -91,8 +100,10 @@ export default function DiagnosisForm() {
   const answeredCount = Object.keys(answers).length;
   const isComplete = total > 0 && questions.every(q => answers[q.question_uuid] != null);
   const canFinish = isComplete && pending === 0;
+
   const btnBase =
     'flex-shrink-0 w-12 h-12 rounded-full border-2 border-[#2B3541] cursor-pointer transition-colors duration-200';
+
   const title =
     typeof weekNo === 'number' && weekNo >= 2
       ? `${weekNo}週目の${total}問診断開始！`
@@ -100,17 +111,21 @@ export default function DiagnosisForm() {
 
   function handleSelect(uuid, value) {
     if (!resultId) return;
+
     setAnswers(prev => {
       const next = { ...prev, [uuid]: value };
+
       if (visible.every(q => next[q.question_uuid] != null)) {
         const payload = visible.map(q => ({
           question_uuid: q.question_uuid,
           value: next[q.question_uuid],
         }));
+
         setPending(p => p + 1);
         submitAnswers(resultId, payload)
           .catch(() => {})
           .finally(() => setPending(p => p - 1));
+
         if (end < total) {
           setStart(end);
           setTimeout(() => {
@@ -147,7 +162,6 @@ export default function DiagnosisForm() {
       )}
 
       <Progress current={answeredCount} total={total} />
-
       <hr className="border-t border-[#2B3541] my-4" />
 
       <ol className="space-y-6 mt-4">
