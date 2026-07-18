@@ -4,7 +4,10 @@ require "rails_helper"
 
 RSpec.describe DiagnosisResults::SaveAnswers do
   it "rejects a question that is not assigned to the diagnosis form" do
-    trait = Trait.create!(code: "C", name_ja: "誠実性", name_en: "Conscientiousness")
+    trait = Trait.find_or_create_by!(code: "C") do |record|
+      record.name_ja = "誠実性"
+      record.name_en = "Conscientiousness"
+    end
     assigned = Question.create!(trait: trait, body: "assigned", uuid: SecureRandom.uuid, reverse_scored: false)
     outside = Question.create!(trait: trait, body: "outside", uuid: SecureRandom.uuid, reverse_scored: false)
     form = DiagnosisForm.create!(name: "spec_form")

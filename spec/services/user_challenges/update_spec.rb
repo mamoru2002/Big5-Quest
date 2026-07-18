@@ -6,7 +6,10 @@ RSpec.describe UserChallenges::Update do
   it "records completion separately from expiration" do
     user = User.create!
     weekly = WeeklyProgress.create!(user: user, week_no: 1, start_at: Date.current)
-    trait = Trait.create!(code: "N", name_ja: "情緒安定性", name_en: "Neuroticism")
+    trait = Trait.find_or_create_by!(code: "N") do |record|
+      record.name_ja = "情緒安定性"
+      record.name_en = "Neuroticism"
+    end
     challenge = Challenge.create!(trait: trait, title: "深呼吸する", difficulty: 1)
     user_challenge = UserChallenge.create!(
       user: user,
@@ -31,7 +34,10 @@ RSpec.describe UserChallenges::Update do
   it "treats the legacy expired payload with an execution as completed" do
     user = User.create!
     weekly = WeeklyProgress.create!(user: user, week_no: 1, start_at: Date.current)
-    trait = Trait.create!(code: "C", name_ja: "誠実性", name_en: "Conscientiousness")
+    trait = Trait.find_or_create_by!(code: "C") do |record|
+      record.name_ja = "誠実性"
+      record.name_en = "Conscientiousness"
+    end
     challenge = Challenge.create!(trait: trait, title: "予定を立てる", difficulty: 1)
     user_challenge = UserChallenge.create!(
       user: user,

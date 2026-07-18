@@ -4,7 +4,10 @@ require "rails_helper"
 
 RSpec.describe DiagnosisResults::Complete do
   let(:trait_record) do
-    Trait.create!(code: "E", name_ja: "外向性", name_en: "Extraversion")
+    Trait.find_or_create_by!(code: "E") do |record|
+      record.name_ja = "外向性"
+      record.name_en = "Extraversion"
+    end
   end
   let(:questions) do
     2.times.map do |index|
