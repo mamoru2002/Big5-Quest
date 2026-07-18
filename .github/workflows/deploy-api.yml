@@ -1,7 +1,9 @@
 name: Deploy API to EC2
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -11,6 +13,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
 
     steps:
@@ -60,7 +63,7 @@ jobs:
 
             # 1) コード更新
             git fetch --prune
-            git reset --hard origin/main
+            git reset --hard "${{ github.event.workflow_run.head_sha || github.sha }}"
 
             # 2) /etc/big5quest.env をSecretsで毎回再生成（中身はログ出さない）
             sudo bash -lc '
@@ -79,6 +82,13 @@ jobs:
               MAILER_HOST=${{ secrets.MAILER_HOST }}
               MAILER_ASSET_HOST=${{ secrets.MAILER_ASSET_HOST }}
               MAIL_FROM=${{ secrets.MAIL_FROM }}
+              MAILER_DELIVERY_METHOD=${{ secrets.MAILER_DELIVERY_METHOD }}
+              SMTP_ADDRESS=${{ secrets.SMTP_ADDRESS }}
+              SMTP_PORT=${{ secrets.SMTP_PORT }}
+              SMTP_DOMAIN=${{ secrets.SMTP_DOMAIN }}
+              SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
+              SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+              FRONTEND_BASE_URL=${{ secrets.FRONTEND_BASE_URL }}
               SENTRY_ENV=production
               RAILS_LOG_TO_STDOUT=1
               EOF
@@ -87,19 +97,14 @@ jobs:
                             awk -F= "/^SECRET_KEY_BASE=/{print \"SECRET_KEY_BASE length=\" length(\$2)}" /etc/big5quest.env
                           '
 
-                          # 3) Bundler & 依存
-                          bundle config set without "development test"
-                          bundle config set path "vendor/bundle"
-                          bundle install --no-cache --jobs 3
-
-                          # 4) DBマイグレーション（envを読み込んでec2-userで実行）
+                          # 3) Bundler・依存・DBマイグレーション
                           sudo bash -lc '
                             set -euo pipefail
                             set -a
                             source /etc/big5quest.env
                             set +a
                             cd /opt/Big5-Quest
-                            sudo --preserve-env=RAILS_ENV,SECRET_KEY_BASE,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD,SENTRY_DSN,SENTRY_ENV,RAILS_LOG_TO_STDOUT,AWS_REGION,MAILER_HOST,MAILER_ASSET_HOST,MAIL_FROM \
+                            sudo --preserve-env=RAILS_ENV,SECRET_KEY_BASE,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD,SENTRY_DSN,SENTRY_ENV,RAILS_LOG_TO_STDOUT,AWS_REGION,MAILER_HOST,MAILER_ASSET_HOST,MAIL_FROM,MAILER_DELIVERY_METHOD,SMTP_ADDRESS,SMTP_PORT,SMTP_DOMAIN,SMTP_USERNAME,SMTP_PASSWORD,FRONTEND_BASE_URL \
                               -u ec2-user bash -lc "
                                 set -euo pipefail
                                 export RAILS_ENV=production
@@ -109,6 +114,14 @@ jobs:
                                 bin/rails db:migrate --trace
                               "
                           '
+
+                          # 4) 定期処理を登録
+                          sudo install -m 644 ops/systemd/big5quest-weekly-rollover.service /etc/systemd/system/
+                          sudo install -m 644 ops/systemd/big5quest-weekly-rollover.timer /etc/systemd/system/
+                          sudo install -m 644 ops/systemd/big5quest-guest-cleanup.service /etc/systemd/system/
+                          sudo install -m 644 ops/systemd/big5quest-guest-cleanup.timer /etc/systemd/system/
+                          sudo systemctl daemon-reload
+                          sudo systemctl enable --now big5quest-weekly-rollover.timer big5quest-guest-cleanup.timer
 
                           # 5) 再起動
                           sudo systemctl restart big5quest

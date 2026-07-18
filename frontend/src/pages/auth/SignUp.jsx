@@ -20,7 +20,7 @@ export default function SignUp() {
 
   // 送信時だけ API 仕様（name）に合わせる
   const doSignUp = async ({ nickname, email, password }) => {
-    return AuthAPI.signUp({ name: nickname, email, password })
+    return AuthAPI.signUp({ nickname, email, password })
   }
 
   const onSubmit = async (e) => {
@@ -50,6 +50,7 @@ export default function SignUp() {
       const msg =
         err?.response?.data?.error ||
         err?.response?.data?.message ||
+        err?.response?.data?.errors?.join?.('、') ||
         '登録に失敗しました。入力内容をご確認ください。'
       setError(msg)
     } finally {
@@ -111,12 +112,14 @@ export default function SignUp() {
                 type="password"
                 autoComplete="new-password"
                 required
+                minLength={10}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full h-[35px] rounded-[5px] px-3 outline-none"
                 style={{ background: COLORS.mint, border: `1px solid ${COLORS.ink}`, color: COLORS.ink }}
                 placeholder="パスワードを入力"
               />
+              <p className="mt-1 text-xs text-[#2B3541]/70">10文字以上で入力してください</p>
             </div>
 
             {error && <p className="text-red-600 text-sm">{error}</p>}

@@ -15,9 +15,12 @@ module UserPrograms
         program = user.user_programs.active.order(start_at: :desc).first
         return program if program
 
+        trait_code = focus_trait_code.to_s.upcase
+        raise ActiveRecord::RecordNotFound, "Trait not found" unless Trait.exists?(code: trait_code)
+
         UserProgram.create!(
           user:             user,
-          focus_trait_code: focus_trait_code.to_s.upcase,
+          focus_trait_code: trait_code,
           start_at:         weekly.start_at,
           status:           :active
         )

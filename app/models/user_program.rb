@@ -8,5 +8,6 @@ class UserProgram < ApplicationRecord
   }
 
   validates :focus_trait_code, presence: true
+  validates :focus_trait_code, inclusion: { in: %w[N E C] }
   validates :start_at, presence: true
 end

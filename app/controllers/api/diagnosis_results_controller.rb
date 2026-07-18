@@ -9,30 +9,25 @@ module Api
     def create
       weekly = resolve_current_week_for(current_user)
 
-      requested_form_name = params.dig(:diagnosis_result, :form_name)
-      form_name =
-        if requested_form_name.present?
-          requested_form_name
-        else
-          DiagnosisResults::FormSelector.call(user: current_user, weekly: weekly)
+      result = ApplicationRecord.transaction do
+        current_user.lock!
+        existing = current_user.diagnosis_results.find_by(weekly_progress: weekly)
+
+        unless existing
+          form_name = DiagnosisResults::FormSelector.call(user: current_user, weekly: weekly)
+          form = DiagnosisForm.find_by!(name: form_name)
+          existing = current_user.diagnosis_results.create!(
+            weekly_progress: weekly,
+            diagnosis_form: form,
+            status: :incomplete
+          )
         end
 
-      form = DiagnosisForm.find_by!(name: form_name)
-
-      result = DiagnosisResult.find_or_initialize_by(
-        user: current_user,
-        weekly_progress: weekly
-      ) do |r|
-        r.diagnosis_form = form
-        r.status         = :incomplete
+        DiagnosisStart.find_or_create_by!(diagnosis_result: existing)
+        existing
       end
 
-      if result.new_record?
-        result.save!
-        DiagnosisStart.create!(diagnosis_result: result)
-      end
-
-      render json: { id: result.id, form_name: form.name }, status: :created
+      render json: { id: result.id, form_name: result.diagnosis_form.name }, status: :created
     rescue ArgumentError => e
       render json: { error: e.message }, status: :unprocessable_entity
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => e
@@ -54,12 +49,12 @@ module Api
     end
 
     def complete
-      @result = current_user.diagnosis_results.find(params[:id])
-
-      DiagnosisCompletion.find_or_create_by!(diagnosis_result: @result)
-      @result.update!(status: :complete) unless @result.complete?
+      result = current_user.diagnosis_results.find(params[:id])
+      @result = DiagnosisResults::Complete.call(result: result)
 
       render :complete
+    rescue DiagnosisResults::Complete::IncompleteAnswers => e
+      render json: { error: e.message }, status: :unprocessable_entity
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => e
       render json: { error: e.message }, status: :unprocessable_entity
     end

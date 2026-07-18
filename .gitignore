@@ -37,10 +37,8 @@
 /gh-actions-ec2.pub
 
 # --- Vite / frontend build cache ---
+/node_modules/
 /frontend/.vite/
 /frontend/dist/
 /frontend/node_modules/
-documents/img/.DS_Store
-documents/.DS_Store
-.DS_Store
-.DS_Store
+**/.DS_Store

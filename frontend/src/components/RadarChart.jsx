@@ -3,6 +3,7 @@ import { Chart } from 'chart.js/auto';
 
 export default function RadarChart({ scores }) {
   const chartRef = useRef(null);
+  const instanceRef = useRef(null);
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -13,7 +14,8 @@ export default function RadarChart({ scores }) {
     const traitOrder = ['N', 'E', 'O', 'A', 'C'];
     const dataValues = traitOrder.map(code => scores[code] ?? 0);
 
-    new Chart(ctx, {
+    instanceRef.current?.destroy();
+    instanceRef.current = new Chart(ctx, {
       type: 'radar',
       data: {
         labels,
@@ -54,6 +56,10 @@ export default function RadarChart({ scores }) {
         },
       },
     });
+    return () => {
+      instanceRef.current?.destroy();
+      instanceRef.current = null;
+    };
   }, [scores]);
 
   return <canvas ref={chartRef} width={400} height={400}></canvas>;

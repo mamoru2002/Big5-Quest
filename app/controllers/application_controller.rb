@@ -54,8 +54,10 @@ class ApplicationController < ActionController::API
     weeks_since  = ((today - first_anchor).to_i) / 7
     start_at     = first_anchor + weeks_since * 7
 
-    user.weekly_progresses.find_or_create_by!(start_at: start_at) do |rec|
-      rec.week_no = (user.weekly_progresses.maximum(:week_no) || 0) + 1
+    user.with_lock do
+      user.weekly_progresses.find_or_create_by!(start_at: start_at) do |rec|
+        rec.week_no = (user.weekly_progresses.maximum(:week_no) || 0) + 1
+      end
     end
   end
 

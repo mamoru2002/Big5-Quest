@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_12_174916) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_18_090100) do
   create_table "challenges", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.bigint "trait_id", null: false
     t.integer "difficulty", limit: 1, null: false
@@ -25,7 +25,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_12_174916) do
     t.bigint "diagnosis_result_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["diagnosis_result_id"], name: "index_diagnosis_completions_on_diagnosis_result_id"
+    t.index ["diagnosis_result_id"], name: "idx_diagnosis_completions_result", unique: true
   end
 
   create_table "diagnosis_forms", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
@@ -63,7 +63,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_12_174916) do
     t.bigint "diagnosis_result_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["diagnosis_result_id"], name: "index_diagnosis_starts_on_diagnosis_result_id"
+    t.index ["diagnosis_result_id"], name: "idx_diagnosis_starts_result", unique: true
   end
 
   create_table "emotion_tags", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
@@ -79,6 +79,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_12_174916) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["emotion_tag_id"], name: "index_emotion_tags_user_challenges_on_emotion_tag_id"
+    t.index ["user_challenge_id", "emotion_tag_id"], name: "idx_emotion_tags_user_challenges_unique", unique: true
     t.index ["user_challenge_id"], name: "index_emotion_tags_user_challenges_on_user_challenge_id"
   end
 
@@ -106,9 +107,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_12_174916) do
     t.boolean "reverse_scored", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "uuid"
+    t.string "uuid", null: false
     t.index ["trait_id"], name: "index_questions_on_trait_id"
-    t.index ["uuid"], name: "index_questions_on_uuid"
+    t.index ["uuid"], name: "index_questions_on_uuid", unique: true
   end
 
   create_table "responses", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
@@ -117,8 +118,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_12_174916) do
     t.integer "value", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["diagnosis_result_id", "question_id"], name: "idx_responses_result_question", unique: true
     t.index ["diagnosis_result_id"], name: "index_responses_on_diagnosis_result_id"
     t.index ["question_id"], name: "index_responses_on_question_id"
+    t.check_constraint "`value` between 1 and 5", name: "responses_value_between_1_and_5"
   end
 
   create_table "traits", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
@@ -136,7 +139,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_12_174916) do
     t.boolean "is_public", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["user_challenge_id"], name: "index_user_challenge_comments_on_user_challenge_id"
+    t.index ["user_challenge_id"], name: "idx_user_challenge_comments_challenge", unique: true
   end
 
   create_table "user_challenges", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
@@ -152,6 +155,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_12_174916) do
     t.index ["user_id", "challenge_id", "weekly_progress_id"], name: "idx_on_user_id_challenge_id_weekly_progress_id_9a16a9f5de", unique: true
     t.index ["user_id"], name: "index_user_challenges_on_user_id"
     t.index ["weekly_progress_id"], name: "index_user_challenges_on_weekly_progress_id"
+    t.check_constraint "`exec_count` >= 0", name: "user_challenges_exec_count_non_negative"
   end
 
   create_table "user_credentials", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
@@ -204,13 +208,16 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_12_174916) do
   create_table "users", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "guest", default: false, null: false
+    t.datetime "guest_expires_at"
+    t.index ["guest", "guest_expires_at"], name: "idx_users_guest_expiration"
   end
 
   create_table "weekly_misses", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.bigint "weekly_progress_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["weekly_progress_id"], name: "index_weekly_misses_on_weekly_progress_id"
+    t.index ["weekly_progress_id"], name: "idx_weekly_misses_progress", unique: true
   end
 
   create_table "weekly_pauses", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|

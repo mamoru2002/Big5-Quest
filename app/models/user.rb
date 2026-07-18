@@ -9,6 +9,10 @@ class User < ApplicationRecord
   has_many :likes,              dependent: :destroy
   has_many :user_programs, dependent: :destroy
 
+  scope :expired_guests, -> { where(guest: true).where("guest_expires_at < ?", Time.current) }
+
+  validates :guest_expires_at, presence: true, if: :guest?
+
   def active_user_program
     user_programs.active.order(start_at: :desc).first
   end

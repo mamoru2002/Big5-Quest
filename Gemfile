@@ -28,6 +28,7 @@ gem "bootsnap", require: false
 
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 gem "rack-cors", "~> 2.0"
+gem "rack-attack", "~> 6.8"
 
 gem "sentry-ruby"
 gem "sentry-rails"

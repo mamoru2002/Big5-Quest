@@ -9,29 +9,17 @@ import {
   fetchWeekSkipStatus,
   updateWeekSkip,
   fetchChallengeHistory,
+  fetchCurrentWeek,
 } from '../api';
 import { fetchProfile, saveProfile } from '../api/profile';
 
 const COLORS = { teal: '#00A8A5', ink: '#2B3541', mint: '#CDEDEC', bg: '#F9FAFB' };
-const FOCUS_KEY = 'focus_trait_code';
 
 const TRAIT_LABEL = {
   N: '情緒安定性',
   E: '外向性',
   C: '誠実性',
 };
-
-function getFocusCode() {
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const v = window.localStorage.getItem(FOCUS_KEY);
-      return v || null;
-    }
-  } catch (e) {
-    console.debug('localStorage error', e);
-  }
-  return null;
-}
 
 export default function MyPage() {
   const [loading, setLoading] = useState(true);
@@ -61,11 +49,12 @@ export default function MyPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [meRes, summaryRes, skipResRaw, profRes] = await Promise.all([
+        const [meRes, summaryRes, skipResRaw, profRes, weekRes] = await Promise.all([
           fetchMe(),
           fetchStatsSummary(),
           fetchWeekSkipStatus(),
           fetchProfile().catch(() => ({ name: '', bio: '' })),
+          fetchCurrentWeek().catch(() => null),
         ]);
         setMe(meRes);
         setSummary(summaryRes);
@@ -77,7 +66,7 @@ export default function MyPage() {
 
         setProfile({ name: profRes?.name || '', bio: profRes?.bio || '' });
 
-        const code = getFocusCode();
+        const code = weekRes?.focus_trait_code;
         if (!code) {
           alert('初回の「伸ばす特性」選択が見つかりませんでした。診断〜特性選択を先に完了してください。');
         } else {
@@ -139,7 +128,8 @@ export default function MyPage() {
         return;
       }
 
-      setSkipInfo((s) => ({ ...s, next_week_paused: effective }));
+      setSkipInfo(res);
+      setUsedBase(Number(res.used || 0));
     } catch (e) {
       console.error(e);
       setSkipChecked(prev);

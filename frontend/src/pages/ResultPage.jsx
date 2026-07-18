@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import Layout from '../components/Layout'
 import Button from '../components/ui/Button'
 import RadarChart from '../components/RadarChart'
+import { fetchCurrentWeek, fetchResultScores } from '../api'
 
 const TRAIT_SUMMARIES = [
   {
@@ -66,25 +67,58 @@ const TRAIT_LABEL = {
   C: '誠実性',
 }
 
-function getFocusCode() {
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const v = window.localStorage.getItem('focus_trait_code')
-      return v || null
-    }
-  } catch (e) {
-    console.debug('localStorage error', e)
-  }
-  return null
-}
-
 export default function ResultPage() {
   const { id } = useParams()
   const { state } = useLocation()
   const nav = useNavigate()
-  const focusTraitCode = getFocusCode() 
+  const [focusTraitCode, setFocusTraitCode] = useState(null)
+  const [focusReady, setFocusReady] = useState(false)
+  const [loadedScores, setLoadedScores] = useState(state?.scores || null)
+  const [loadingScores, setLoadingScores] = useState(!state?.scores)
+  const [scoreError, setScoreError] = useState('')
 
-  const scores = useMemo(() => state?.scores || {}, [state?.scores])
+  useEffect(() => {
+    if (state?.scores) {
+      setLoadedScores(state.scores)
+      setLoadingScores(false)
+      return
+    }
+
+    let active = true
+    setLoadingScores(true)
+    fetchResultScores(id)
+      .then(data => {
+        if (active) setLoadedScores(data || {})
+      })
+      .catch(() => {
+        if (active) setScoreError('診断結果の取得に失敗しました')
+      })
+      .finally(() => {
+        if (active) setLoadingScores(false)
+      })
+
+    return () => { active = false }
+  }, [id, state?.scores])
+
+  useEffect(() => {
+    let active = true
+    fetchCurrentWeek()
+      .then(week => {
+        if (!active) return
+        const code = week?.focus_trait_code
+        setFocusTraitCode(['N', 'E', 'C'].includes(code) ? code : null)
+      })
+      .catch(() => {
+        if (active) setFocusTraitCode(null)
+      })
+      .finally(() => {
+        if (active) setFocusReady(true)
+      })
+
+    return () => { active = false }
+  }, [])
+
+  const scores = useMemo(() => loadedScores || {}, [loadedScores])
 
   const recommended = useMemo(() => {
     const targetCodes = ['N', 'E', 'C']
@@ -96,6 +130,9 @@ export default function ResultPage() {
   }, [scores])
 
   const traitByCode = code => TRAITS.find(t => t.code === code)
+
+  if (loadingScores || !focusReady) return <p className="text-center p-4">診断結果を読み込み中…</p>
+  if (scoreError) return <p className="text-center p-4 text-red-600">{scoreError}</p>
 
   return (
     <Layout>

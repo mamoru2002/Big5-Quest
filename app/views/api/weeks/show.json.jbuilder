@@ -5,7 +5,7 @@ json.editable  @editable
 
 json.result_id         @result_id
 json.diagnosis_status  @diagnosis_status
-json.diagnosis_completed (@diagnosis_status == 'complete')
+json.diagnosis_completed (@diagnosis_status == "complete")
 
 json.paused            @paused_this_week
 json.program_week      @program_week

@@ -5,12 +5,8 @@ module Api
 
       def create
         email = params.require(:email).to_s.strip.downcase
-        resource = UserCredential.send_reset_password_instructions(email: email)
-        if successfully_sent?(resource)
-          head :ok
-        else
-          render json: { error: resource.errors.full_messages.to_sentence }, status: :unprocessable_entity
-        end
+        UserCredential.send_reset_password_instructions(email: email)
+        head :accepted
       end
 
       def update

@@ -1,4 +1,6 @@
 class Api::WeekSkipsController < ApplicationController
+  class LimitExceeded < StandardError; end
+
   before_action :authenticate_api_user_credential!
 
   def status
@@ -6,9 +8,11 @@ class Api::WeekSkipsController < ApplicationController
   end
 
   def update
-    want_skip = ActiveModel::Type::Boolean.new.cast(params[:skip])
+    want_skip = ActiveModel::Type::Boolean.new.cast(params.require(:skip))
     want_skip ? ensure_reserved_once! : cancel_if_possible!
     render json: build_payload
+  rescue LimitExceeded => e
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   private
@@ -22,7 +26,7 @@ class Api::WeekSkipsController < ApplicationController
   end
 
   def peek_next_week_progress
-    @peek_next_week_progress ||= current_user.weekly_progresses.find_by(start_at: next_week_start)
+    current_user.weekly_progresses.find_by(start_at: next_week_start)
   end
 
   def resolve_next_week_progress
@@ -38,16 +42,28 @@ class Api::WeekSkipsController < ApplicationController
   end
 
   def ensure_reserved_once!
-    return if pause_exists?
-    wp = resolve_next_week_progress
-    WeeklyPause.find_or_create_by!(weekly_progress_id: wp.id)
+    ApplicationRecord.transaction do
+      current_user.lock!
+      unless pause_exists?
+        if total_used_skips >= max_skips
+          raise LimitExceeded, "利用できるスキップ回数の上限に達しています"
+        end
+
+        wp = resolve_next_week_progress
+        WeeklyPause.find_or_create_by!(weekly_progress_id: wp.id)
+      end
+    end
   end
 
   def cancel_if_possible!
-    wp = peek_next_week_progress
-    return unless wp
-    if (pause = WeeklyPause.find_by(weekly_progress_id: wp.id))
-      pause.destroy!
+    ApplicationRecord.transaction do
+      current_user.lock!
+      wp = peek_next_week_progress
+      next unless wp
+
+      if (pause = WeeklyPause.find_by(weekly_progress_id: wp.id))
+        pause.destroy!
+      end
     end
   end
 
