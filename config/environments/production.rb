@@ -31,17 +31,20 @@ Rails.application.configure do
   config.active_record.dump_schema_after_migration = false
   config.active_record.attributes_for_inspect = [ :id ]
 
+  # Rack::Attack のスロットリング保存先。単一Puma構成を前提とする。
+  config.cache_store = :memory_store, { size: 64.megabytes }
+
   # credentialsは使わない。ENVで運用
   config.require_master_key = false
   config.secret_key_base = ENV.fetch("SECRET_KEY_BASE")
 
   config.action_mailer.perform_caching = false
   config.action_mailer.default_url_options = {
-    host:     ENV.fetch("MAILER_HOST", "api.big5-quest.com"),
-    protocol: ENV.fetch("MAILER_PROTOCOL", "https")
+    host:     ENV["MAILER_HOST"].presence || "api.big5-quest.com",
+    protocol: ENV["MAILER_PROTOCOL"].presence || "https"
   }
 
-  delivery_method = (ENV["MAILER_DELIVERY_METHOD"] || "smtp").to_sym
+  delivery_method = (ENV["MAILER_DELIVERY_METHOD"].presence || "ses_v2").to_sym
   config.action_mailer.delivery_method = delivery_method
 
   if delivery_method == :smtp
@@ -49,12 +52,12 @@ Rails.application.configure do
     boolean = ActiveModel::Type::Boolean.new
 
     config.action_mailer.smtp_settings = {
-      address:              ENV["SMTP_ADDRESS"],
-      port:                 ENV.fetch("SMTP_PORT", 587).to_i,
-      domain:               ENV["SMTP_DOMAIN"],
-      user_name:            ENV["SMTP_USERNAME"],
-      password:             ENV["SMTP_PASSWORD"],
-      authentication:       (ENV["SMTP_AUTHENTICATION"] || "login").to_sym,
+      address:              ENV["SMTP_ADDRESS"].presence,
+      port:                 (ENV["SMTP_PORT"].presence || 587).to_i,
+      domain:               ENV["SMTP_DOMAIN"].presence,
+      user_name:            ENV["SMTP_USERNAME"].presence,
+      password:             ENV["SMTP_PASSWORD"].presence,
+      authentication:       (ENV["SMTP_AUTHENTICATION"].presence || "login").to_sym,
       enable_starttls_auto: boolean.cast(ENV.fetch("SMTP_ENABLE_STARTTLS_AUTO", "true"))
     }.compact
   end

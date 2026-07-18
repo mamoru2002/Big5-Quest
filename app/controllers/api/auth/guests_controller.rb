@@ -10,7 +10,7 @@ module Api
 
           user_attrs = {}
           user_attrs[:email] = guest_email if User.column_names.include?("email")
-          user = User.create!(user_attrs)
+          user = User.create!(user_attrs.merge(guest: true, guest_expires_at: 24.hours.from_now))
 
           if defined?(UserProfile) && UserProfile.column_names.include?("name")
             UserProfile.create!(user_id: user.id, name: "Guest #{SecureRandom.hex(3)}")
@@ -52,9 +52,11 @@ module Api
       rescue ActiveRecord::RecordInvalid => e
         render json: { error: e.record.errors.full_messages.to_sentence }, status: :unprocessable_entity
       rescue ActiveRecord::RecordNotUnique => e
-        render json: { error: "duplicate_email", message: e.message }, status: :conflict
+        Rails.logger.warn("guest_login duplicate: #{e.class}")
+        render json: { error: "guest_login_failed" }, status: :conflict
       rescue => e
-        render json: { error: e.class.name, message: e.message }, status: :internal_server_error
+        Rails.error.report(e, handled: true, context: { endpoint: "guest_login" })
+        render json: { error: "guest_login_failed" }, status: :internal_server_error
       end
 
       private

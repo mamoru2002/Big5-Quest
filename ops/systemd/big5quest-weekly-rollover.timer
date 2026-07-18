@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Big5-Quest weekly rollover every Monday
+
+[Timer]
+OnCalendar=Mon *-*-* 00:10:00 Asia/Tokyo
+Persistent=true
+RandomizedDelaySec=300
+Unit=big5quest-weekly-rollover.service
+
+[Install]
+WantedBy=timers.target

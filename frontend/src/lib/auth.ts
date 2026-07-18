@@ -5,6 +5,7 @@ import api, {
   getVisitToken,
   markGuestSession,
   clearGuestSession,
+  clearUserScopedStorage,
 } from './api';
 
 export type SignUpParams = {
@@ -21,6 +22,7 @@ export const AuthAPI = {
     const bodyToken   = res.data?.token as string | undefined;
     const token = headerToken || bodyToken || '';
     if (token) {
+      clearUserScopedStorage();
       setAuthToken(token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       markGuestSession();
@@ -30,6 +32,7 @@ export const AuthAPI = {
   async login(email: string, password: string) {
     const { data, headers } = await api.post('/login', { email, password });
     const token = ((headers as any)?.['authorization'] as string)?.replace(/^Bearer\s+/i, '') || data?.token;
+    clearUserScopedStorage();
     clearGuestSession();
     if (token) {
       setAuthToken(token);
@@ -39,13 +42,14 @@ export const AuthAPI = {
   },
   async signUp({ nickname, email, password }: SignUpParams) {
     const payload = {
-      nickname,
+      name: nickname,
       email,
       password,
       password_confirmation: password,
     };
     const { data, headers } = await api.post('/sign_up', payload);
     const token = ((headers as any)?.['authorization'] as string)?.replace(/^Bearer\s+/i, '') || data?.token;
+    clearUserScopedStorage();
     clearGuestSession();
     if (token) {
       setAuthToken(token);
@@ -69,6 +73,7 @@ export const AuthAPI = {
     } finally {
       clearAuthToken();
       clearGuestSession();
+      clearUserScopedStorage();
       delete api.defaults.headers.common['Authorization'];
     }
   },

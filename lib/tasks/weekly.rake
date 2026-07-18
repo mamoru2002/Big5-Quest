@@ -1,5 +1,6 @@
 
 # frozen_string_literal: true
+
 namespace :weekly do
   desc "End-of-week processing: expire past challenges and ensure current WeeklyProgress exists for all users"
   task rollover: :environment do

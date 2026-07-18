@@ -3,4 +3,5 @@ class UserChallengeComment < ApplicationRecord
 
   validates :comment,   presence: true, length: { maximum: 500 }
   validates :is_public, inclusion: { in: [ true, false ] }
+  validates :user_challenge_id, uniqueness: true
 end

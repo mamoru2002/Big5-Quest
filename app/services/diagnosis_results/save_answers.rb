@@ -17,11 +17,14 @@ class DiagnosisResults::SaveAnswers
     validate_payload!
 
     latest_answers_by_uuid = dedupe_answers(@normalized_answers)
-    uuid_to_question_id    = resolve_question_ids(latest_answers_by_uuid.keys)
-
-    saved_count = 0
 
     ActiveRecord::Base.transaction do
+      @diagnosis_result.lock!
+      raise ValidationFailed, "completed diagnosis cannot be edited" if @diagnosis_result.complete?
+
+      uuid_to_question_id = resolve_question_ids(latest_answers_by_uuid.keys)
+      saved_count = 0
+
       latest_answers_by_uuid.each do |question_uuid, answer_value|
         question_id = uuid_to_question_id.fetch(question_uuid)
 
@@ -34,9 +37,9 @@ class DiagnosisResults::SaveAnswers
         response_record.save!
         saved_count += 1
       end
-    end
 
-    saved_count
+      saved_count
+    end
 
   rescue ActiveRecord::RecordInvalid => e
     message = e.record&.errors&.full_messages&.join(", ") || e.message
@@ -106,13 +109,15 @@ class DiagnosisResults::SaveAnswers
   end
 
   def resolve_question_ids(question_uuids)
-    uuid_to_question_id = Question.where(uuid: question_uuids)
-                                  .pluck(:uuid, :id)
-                                  .to_h
+    uuid_to_question_id = @diagnosis_result.diagnosis_form
+                                               .questions
+                                               .where(uuid: question_uuids)
+                                               .pluck(:uuid, :id)
+                                               .to_h
 
     unknown_uuids = question_uuids - uuid_to_question_id.keys
     if unknown_uuids.any?
-      raise UnknownQuestionUuid, "unknown uuids: #{unknown_uuids.join(', ')}"
+      raise UnknownQuestionUuid, "questions do not belong to this diagnosis: #{unknown_uuids.join(', ')}"
     end
 
     uuid_to_question_id

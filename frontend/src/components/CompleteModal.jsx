@@ -52,7 +52,7 @@ export default function CompleteModal({
     setError(null)
 
     const payload = {
-      status: 'expired',
+      status: 'completed',
       exec_count: Math.max(1, uc.exec_count || 0),
       comment,
       emotion_tag_ids: Array.from(selectedTagIds),
@@ -60,7 +60,7 @@ export default function CompleteModal({
 
     try {
       await updateUserChallenge(uc.id, payload)
-      onSaved?.(uc.id, { status: 'expired', exec_count: payload.exec_count })
+      onSaved?.(uc.id, { status: 'completed', exec_count: payload.exec_count })
       onClose?.()
     } catch (e) {
       console.error('updateUserChallenge failed', e)

@@ -2,7 +2,7 @@
 
 Devise.setup do |config|
   # メール送信者
-  config.mailer_sender = ENV.fetch("MAILER_SENDER", "no-reply@big5-quest.com")
+  config.mailer_sender = ENV["MAILER_SENDER"].presence || ENV["MAIL_FROM"].presence || "no-reply@big5-quest.com"
 
   # ORM
   require "devise/orm/active_record"
@@ -22,8 +22,9 @@ Devise.setup do |config|
   config.expire_all_remember_me_on_sign_out = true
 
   # バリデーション
-  config.password_length = 6..128
+  config.password_length = 10..128
   config.email_regexp = /\A[^@\s]+@[^@\s]+\z/
+  config.paranoid = true
 
   # サインアウト
   config.sign_out_via = :delete
@@ -49,7 +50,7 @@ Devise.setup do |config|
     jwt.revocation_requests = [
       [ "DELETE", %r{^/api/logout$} ]
     ]
-    jwt.expiration_time = 14.days.to_i
+    jwt.expiration_time = 1.day.to_i
     jwt.request_formats = { api_user_credential: [ :json ] }
   end
 end

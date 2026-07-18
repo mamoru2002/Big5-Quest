@@ -34,11 +34,12 @@ module Api
                .joins(:weekly_progress)
                .joins(responses: :question)
                .where(user_id: uid)
+               .where(status: DiagnosisResult.statuses[:complete])
                .where(questions: { trait_id: trait.id })
                .group("weekly_progresses.week_no")
                .select(<<~SQL.squish)
                  weekly_progresses.week_no AS week_no,
-                 SUM(
+                 AVG(
                    CASE WHEN questions.reverse_scored
                         THEN (6 - responses.value)
                         ELSE responses.value
@@ -47,10 +48,10 @@ module Api
                SQL
                .order("weekly_progresses.week_no ASC")
 
-      points = rows.map { |r| { week: r.week_no.to_i, score: r.trait_score.to_i } }
+      points = rows.map { |r| { week: r.week_no.to_i, score: r.trait_score.to_f.round(2) } }
       base = points.first&.[](:score)
       if base
-        points.each { |p| p[:delta] = p[:score] - base }
+        points.each { |p| p[:delta] = (p[:score] - base).round(2) }
       else
         points = []
       end

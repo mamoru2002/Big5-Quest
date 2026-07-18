@@ -1,0 +1,11 @@
+[Unit]
+Description=Delete expired Big5-Quest guest accounts daily
+
+[Timer]
+OnCalendar=*-*-* 03:20:00 Asia/Tokyo
+Persistent=true
+RandomizedDelaySec=300
+Unit=big5quest-guest-cleanup.service
+
+[Install]
+WantedBy=timers.target

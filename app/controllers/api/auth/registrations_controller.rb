@@ -17,8 +17,6 @@ module Api
 
           # Confirmable対応：未確認ならメール送って 202 を返す
           if cred.respond_to?(:confirmed?) && !cred.confirmed?
-            # Devise Confirmable は save! 時に送信されますが、念のため明示
-            cred.send_confirmation_instructions if Devise.mailer
             render json: { requires_confirmation: true }, status: :accepted
             return
           end

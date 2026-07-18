@@ -5,6 +5,7 @@ import {
   startDiagnosis,
   submitAnswers,
   completeDiagnosis,
+  fetchDiagnosisResult,
   fetchCurrentWeek,
 } from '../api';
 import Progress from '../components/Progress';
@@ -36,17 +37,16 @@ export default function DiagnosisForm() {
       setError(null);
 
       try {
-        // ゲスト導線（result_id + form が来る前提）
+        // 作成済み診断の再開。実際のフォームはサーバーから取得する。
         if (resultIdParam) {
-          if (!searchForm) throw new Error('form param is required when result_id is present');
-
           const rid = Number(resultIdParam);
           if (!Number.isFinite(rid)) throw new Error('invalid result_id');
 
+          const result = await fetchDiagnosisResult(rid);
           if (!active) return;
           setResultId(rid);
 
-          const qs = await fetchQuestions(searchForm);
+          const qs = await fetchQuestions(result.form_name);
           if (!active) return;
           setQuestions(qs);
           return;
@@ -123,7 +123,7 @@ export default function DiagnosisForm() {
 
         setPending(p => p + 1);
         submitAnswers(resultId, payload)
-          .catch(() => {})
+          .catch(() => setError('回答の保存に失敗しました。通信状態を確認して、もう一度お試しください。'))
           .finally(() => setPending(p => p - 1));
 
         if (end < total) {

@@ -6,14 +6,9 @@ export async function fetchQuestions(formName) {
   return data;
 }
 
-/** 診断開始（結果IDとフォーム名を返す） */
-export async function startDiagnosis(formName) {
-  const payload =
-    formName
-      ? { diagnosis_result: { form_name: formName } } // ゲスト等で form 指定したい時だけ
-      : {}; // 通常はサーバに決めさせる
-
-  const { data } = await api.post('/diagnosis_results', payload);
+/** 診断開始（フォームはサーバーが決定） */
+export async function startDiagnosis() {
+  const { data } = await api.post('/diagnosis_results', {});
 
   // サーバが { id, form_name } を返す前提
   return { id: data.id, formName: data.form_name };
@@ -35,9 +30,18 @@ export async function completeDiagnosis(resultId) {
   return data.scores;
 }
 
+/** 診断結果の取得 */
+export async function fetchDiagnosisResult(id) {
+  const { data } = await api.get(`/diagnosis_results/${encodeURIComponent(id)}`);
+  return data;
+}
+
 /** 診断結果のスコア取得 */
 export async function fetchResultScores(id) {
-  const { data } = await api.get(`/diagnosis_results/${encodeURIComponent(id)}`);
+  const data = await fetchDiagnosisResult(id);
+  if (data.status !== 'complete') {
+    throw new Error('diagnosis is not complete');
+  }
   return data.scores;
 }
 

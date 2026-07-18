@@ -26,9 +26,8 @@ module Weekly
       return unless anchor
 
       current_start_at = compute_start_at(anchor, today)
-      last_week        = user.weekly_progresses.order(:week_no).last
-
-      ActiveRecord::Base.transaction do
+      user.with_lock do
+        last_week = user.weekly_progresses.order(:week_no).last
         weekly = user.weekly_progresses.find_by(start_at: current_start_at)
         unless weekly
           next_week_no = (last_week&.week_no || 0) + ((current_start_at > (last_week&.start_at || anchor)) ? 1 : 0)

@@ -13,4 +13,5 @@ class WeeklyProgress < ApplicationRecord
             numericality: { only_integer: true, greater_than: 0 },
             uniqueness:   { scope: :user_id }
   validates :start_at, presence: true
+  validates :start_at, uniqueness: { scope: :user_id }
 end

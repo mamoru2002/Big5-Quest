@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import Button from '../../components/ui/Button'
 import { AuthAPI } from '../../lib/auth'
@@ -23,6 +23,12 @@ export default function ResetPassword() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [completed, setCompleted] = useState(false)
+
+  useEffect(() => {
+    if (token && typeof window !== 'undefined') {
+      window.history.replaceState(window.history.state, document.title, '/reset')
+    }
+  }, [token])
 
   const onSubmit = async (event) => {
     event.preventDefault()
@@ -95,6 +101,7 @@ export default function ResetPassword() {
                 type="password"
                 autoComplete="new-password"
                 required
+                minLength={10}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full h-[35px] rounded-[5px] px-3 outline-none"
@@ -109,6 +116,7 @@ export default function ResetPassword() {
                 type="password"
                 autoComplete="new-password"
                 required
+                minLength={10}
                 value={passwordConfirmation}
                 onChange={(e) => setPasswordConfirmation(e.target.value)}
                 className="w-full h-[35px] rounded-[5px] px-3 outline-none"

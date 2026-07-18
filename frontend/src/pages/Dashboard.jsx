@@ -15,7 +15,6 @@ import formsMapData from '../../../db/seeds/forms_map.json'
 const REDIRECT_KEY_PREFIX = 'weekly_redirect_done'
 const SKIP_SCHEDULE_PREFIX = 'weekly_skip_scheduled'
 const FORM_STORAGE_PREFIX = 'weekly_form_choice'
-const FOCUS_TRAIT_STORAGE_KEY = 'focus_trait_code'
 
 function storageAvailable() {
   try {
@@ -77,7 +76,9 @@ function markRedirectedForWeek(userId, weekKey) {
   if (!userId || !weekKey || !storageAvailable()) return
   try {
     window.localStorage.setItem(redirectKey(userId, weekKey), '1')
-  } catch {}
+  } catch {
+    // localStorage が利用できない環境ではサーバー状態だけを使用する
+  }
 }
 
 function markScheduledSkip(userId, weekKey, active) {
@@ -88,7 +89,9 @@ function markScheduledSkip(userId, weekKey, active) {
     } else {
       window.localStorage.removeItem(skipKey(userId, weekKey))
     }
-  } catch {}
+  } catch {
+    // localStorage が利用できない環境ではサーバー状態だけを使用する
+  }
 }
 function isWeekScheduledToSkip(userId, weekKey) {
   if (!userId || !weekKey || !storageAvailable()) return false
@@ -189,16 +192,8 @@ function saveWeeklyFormChoice(userId, programWeek, payload) {
       questionUuids: Array.isArray(payload?.questionUuids) ? payload.questionUuids : [],
     }
     window.localStorage.setItem(key, JSON.stringify(data))
-  } catch {}
-}
-
-function readStoredFocusTrait() {
-  try {
-    if (typeof window === 'undefined') return null
-    const value = window.localStorage.getItem(FOCUS_TRAIT_STORAGE_KEY)
-    return value ? value.toUpperCase() : null
   } catch {
-    return null
+    // localStorage が利用できない環境では永続化を行わない
   }
 }
 
@@ -340,7 +335,7 @@ export default function Dashboard() {
       return
     }
 
-    const focusCandidate = weekFocusTrait || readStoredFocusTrait()
+    const focusCandidate = weekFocusTrait
     const selection = selectWeeklyForm({
       focus_trait_code: focusCandidate,
       is_milestone_26: isMilestoneWeek,
@@ -482,8 +477,8 @@ useEffect(() => {
   if (!week)   return null
 
   const challenges = week.challenges || []
-  const completed  = challenges.filter(c => c.status === 'expired')
-  const active     = challenges.filter(c => c.status !== 'expired')
+  const completed  = challenges.filter(c => c.status === 'completed')
+  const active     = challenges.filter(c => ['unstarted', 'executing'].includes(c.status))
 
   const totalSlots = Math.min(4, challenges.length)
   const doneCount  = completed.length

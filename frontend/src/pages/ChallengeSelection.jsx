@@ -48,11 +48,6 @@ export default function ChallengeSelection() {
     try {
       const ids = Array.from(selectedIds)
       await createUserChallenges(id, ids, code)
-      try {
-        localStorage.setItem('focus_trait_code', code)
-      } catch (err) {
-        console.warn('focus_trait_code save failed', err)
-      }
       nav('/dashboard', { replace: true })
     } catch (err) {
       console.error(err)

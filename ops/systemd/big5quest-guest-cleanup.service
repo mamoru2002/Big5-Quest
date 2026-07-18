@@ -1,0 +1,11 @@
+[Unit]
+Description=Delete expired Big5-Quest guest accounts
+After=network.target big5quest.service
+
+[Service]
+Type=oneshot
+User=ec2-user
+WorkingDirectory=/opt/Big5-Quest
+Environment=RAILS_ENV=production
+EnvironmentFile=/etc/big5quest.env
+ExecStart=/usr/bin/env bundle exec rake guests:cleanup

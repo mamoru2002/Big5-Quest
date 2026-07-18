@@ -22,47 +22,21 @@ module Api
       render :update
     rescue UserChallenges::Update::ValidationFailed => e
       render json: { error: e.message }, status: :unprocessable_entity
-    rescue ActiveRecord::RecordNotFound => e
-      render json: { error: e.message }, status: :not_found
+    rescue UserChallenges::Update::NotFound
+      render json: { error: "UserChallenge not found" }, status: :not_found
     end
 
     def create
-      ids = Array(params.require(:challenge_ids))
-      unless ids.length.between?(1, 4)
-        return render json: { error: "1〜4件選んでください" }, status: :unprocessable_entity
-      end
+      created_count = UserChallenges::Create.call(
+        user: current_user,
+        weekly: @weekly,
+        diagnosis_result_id: params.require(:diagnosis_result_id),
+        challenge_ids: params.require(:challenge_ids),
+        focus_trait_code: params[:focus_trait_code]
+      )
 
-      weekly_progress = @weekly
-      program = current_user.active_user_program
-
-      trait =
-        if program
-          program.focus_trait_code
-        else
-          params.require(:focus_trait_code)
-        end
-      UserPrograms::EnsureActive.call(user: current_user, weekly: weekly_progress, focus_trait_code: trait)
-
-      existing = current_user.user_challenges
-                             .where(weekly_progress: weekly_progress, challenge_id: ids)
-                             .pluck(:challenge_id)
-      new_ids = ids.map(&:to_i) - existing
-      return head :no_content if new_ids.empty?
-
-      UserChallenge.transaction do
-        new_ids.each do |c_id|
-          UserChallenge.create!(
-            user:            current_user,
-            challenge_id:    c_id,
-            weekly_progress: weekly_progress,
-            status:          :unstarted,
-            exec_count:      0
-          )
-        end
-      end
-
-      head :created
-    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => e
+      head(created_count.zero? ? :no_content : :created)
+    rescue UserChallenges::Create::ValidationFailed => e
       render json: { error: e.message }, status: :unprocessable_entity
     end
 
